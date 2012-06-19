@@ -33,7 +33,7 @@ setup(
       long_description="Compares MongoDB log files and index entries to make index recommendations",
       packages=['dex', 'dex.test'],
       scripts=['bin/dex'],
-      url='http://mongolab.com',
+      url='https://github.com/mongolab/dex',
       license='MIT',
       install_requires=["pymongo", "pyyaml", "dargparse"]
       )

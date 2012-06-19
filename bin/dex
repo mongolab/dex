@@ -1,0 +1,143 @@
+#!/usr/bin/env python
+
+################################################################################
+#
+# Copyright (c) 2012 ObjectLabs Corporation
+#
+# Permission is hereby granted, free of charge, to any person obtaining
+# a copy of this software and associated documentation files (the
+# "Software"), to deal in the Software without restriction, including
+# without limitation the rights to use, copy, modify, merge, publish,
+# distribute, sublicense, and/or sell copies of the Software, and to
+# permit persons to whom the Software is furnished to do so, subject to
+# the following conditions:
+#
+# The above copyright notice and this permission notice shall be
+# included in all copies or substantial portions of the Software.
+#
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+# EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+# MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+# NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE
+# LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
+# OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
+# WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+################################################################################
+
+import dargparse
+import sys
+import traceback
+import datetime
+from dex import dex
+
+from dargparse import dargparse
+from datetime import  datetime
+
+PARSER_DEFINITION ={
+    "prog": "dex",
+    "description" : "Scans a provided MongoDB log file and uses the provided URI to compare queries found in the logfile to the indexes available in the database, recommending indexes for those queries which are not indexed. Recommended for MongoDB version 2.0.4 or later.",
+    "args": [
+             {
+             "name": "uri",
+             "type" : "positional",
+             "help": "database connection URI, including database path, and authentication if required. If authentication is is enabled and multiple databases need to be dexed, this URI should point to the admin database.",
+             "nargs": 1
+             },
+             {
+             "name": "logfile_path",
+             "type" : "optional",
+             "help": "path to a MongoDB log file. If provided, the file will be searched for queries.",
+             "cmd_arg": [
+                         "-f",
+                         "--file"
+                         ],
+             "nargs": 1,
+             "default": None
+             },
+             {
+             "name": "use_profile",
+             "type" : "optional",
+             "help": "flag to examine the MongoDB system.profile collection. If set, the profile collection will be searched for queries. NOT YET SUPPORTED.",
+             "cmd_arg": [
+                         "-p",
+                         "--profile"
+                         ],
+             "action": "store_true",
+             "nargs": 0,
+             "default": False
+             },
+             {
+             "name": "namespaces",
+             "type" : "optional",
+             "help": "a MongoDB namespace (db.collection). Can be provided multiple times. This option creates a filter, and queries not in the provided namespace(s) will not be analyzed. Format: -n ('db.collection' | '*' | 'db.*' | 'collection'). '*.*' and '*.collection' are redundant but also supported. An asterisk is shorthand for 'all'--actual regexes are not supported. Note that -n '*' is equivalent to not providing a -n argument.",
+             "cmd_arg": [
+                         "-n",
+                         "--namespace"
+                         ],
+             "nargs": 1,
+             "action": "append",
+             "default": []
+             },
+             {
+             "name": "verbose",
+             "type" : "optional",
+             "help": "enables provision of additional output information.",
+             "cmd_arg": [
+                         "-v",
+                         "--verbose"
+                         ],
+             "action": "store_true",
+             "nargs": 0,
+             "default": False
+             }
+             
+             ]
+
+
+}
+
+
+
+###############################################################################
+# MAIN
+###############################################################################
+def main(args):
+    # build the parse object
+    darg_parser = dargparse.build_parser(PARSER_DEFINITION)
+    
+    # parse the command line
+    options = darg_parser.parse_args(args)
+    namespaces = options.namespaces
+
+    if options.use_profile:
+        print 'Warning: Profile option (-p/--profile) not yet supported.'
+        
+    if options.logfile_path is None:
+        print 'Error: Logifle option (-f/--logfile) is currently required.'
+        return 1
+    else:
+        md = dex.Dex()
+        return md.analyze_logfile(options.uri,
+                                  options.logfile_path,
+                                  namespaces,
+                                  options.verbose)
+
+
+###############################################################################
+########################                   ####################################
+########################     BOOTSTRAP     ####################################
+########################                   ####################################
+###############################################################################
+
+if __name__ == '__main__':
+    try:
+        # call main with a sub-list starting skipping the
+        # command itself (which is the first arg)
+        main(sys.argv[1:])
+    except (SystemExit, KeyboardInterrupt) , e:
+        if e.code == 0:
+            pass
+        else:
+            raise
+    except:
+        traceback.print_exc()

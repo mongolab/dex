@@ -1,0 +1,7 @@
+*.pyc
+*~
+.DS_Store
+env.zsh
+#*#
+MANIFEST
+dist

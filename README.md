@@ -31,7 +31,7 @@ Run Dex on a log file and provide a URI (with auth credentials, if any) to the
 corresponding database.
 
 ```
-> dex -f my/mongod/data/path/mongodb.log mongodb://myUser:myPass@myHost:12345/myDb
+> dex -f my/mongod/data/path/mongodb.log mongodb://[myUser:myPass@]myHost:12345/myDb
 ```
 
 ### Filtered

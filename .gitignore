@@ -5,3 +5,6 @@ env.zsh
 #*#
 MANIFEST
 dist
+*.ipr
+*.iml
+*.iws

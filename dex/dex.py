@@ -34,8 +34,8 @@ from bson import json_util
 # Configuration
 ################################################################################
 
-IGNORE_DBS = ['local', 'admin']
-IGNORE_COLLECTIONS = ['system.profile', 'system.users', 'system.indexes']
+IGNORE_DBS = [  'local', 'admin']
+IGNORE_COLLECTIONS = [u'system.namespaces', u'system.profile', u'system.users', u'system.indexes']
 BACKGROUND_FLAG = 'true'
 
 ################################################################################
@@ -81,8 +81,72 @@ class Dex:
                                                            query,
                                                            db_name,
                                                            collection_name)
-    
+
     ############################################################################
+    def analyze_profile(self, db_uri, namespaces_list, verbose):
+        """Analyzes queries from a given log file"""
+        out = { 'results': [],
+                'linesRecommended': 0,
+                'uniqueRecommendations': 0,
+                'linesProcessed': 0,
+                'linesPassed': 0 }
+        requested_namespaces = self._validate_namespaces(namespaces_list)
+        profile_parser = ProfileParser()
+        recommendation_cache = []
+
+        databases = self._get_requested_databases(requested_namespaces)
+        connection = pymongo.Connection(db_uri)
+
+        if databases == []:
+            databases = connection.database_names()
+            for ignore_db in IGNORE_DBS:
+                if ignore_db in databases:
+                    databases.remove(ignore_db)
+
+        for database in databases:
+            profile_entries = connection[database]['system.profile'].find()
+
+            for profile_entry in profile_entries:
+                raw_query = profile_parser.parse(profile_entry)
+
+                if raw_query is not None:
+                    namespace_tuple = self._tuplefy_namespace(raw_query['ns'])
+                    # If the query is for a requested namespace ....
+                    if self._namespace_requested(raw_query['ns'],
+                                                 requested_namespaces):
+                        db_name = namespace_tuple[0]
+                        collection_name = namespace_tuple[1]
+
+                        try:
+                            query_report = self.analyze_query(db_uri,
+                                                              raw_query,
+                                                              db_name,
+                                                              collection_name)
+                        except:
+                            return 1
+                        recommendation = query_report['recommendation']
+                        if recommendation is not None:
+                            out['linesRecommended'] += 1
+                            # Cache the signature to suppress duplicate output
+                            if recommendation not in recommendation_cache:
+                                out['uniqueRecommendations'] += 1
+                                recommendation_cache.append(recommendation)
+
+                                if verbose:
+                                    sys.stderr.write(pretty_json(query_report) + '\n')
+                                    out['results'].append(query_report)
+                                else:
+                                    sys.stderr.write(pretty_json(recommendation) + '\n')
+                                    out['results'].append(recommendation)
+        # Print summary statistics
+        sys.stderr.write('Total system.profile entries read: %i\n' % (out['linesPassed']))
+        sys.stderr.write('Understood system.profile entries: %i\n' % (out['linesProcessed']))
+        sys.stderr.write('Unique recommendations: %i\n' % (out['uniqueRecommendations']))
+        sys.stderr.write('System.profile entries impacted by recommendations: %i\n' % (out['linesRecommended']))
+        sys.stdout.write(pretty_json(out))
+        return 0
+
+        ############################################################################
     def analyze_logfile(self, db_uri, logfile_path, namespaces_list, verbose):
         """Analyzes queries from a given log file"""
         out = { 'results': [],
@@ -93,8 +157,7 @@ class Dex:
         requested_namespaces = self._validate_namespaces(namespaces_list)
         log_parser = LogParser()
         recommendation_cache = []
-        lines_passed = 0
-        lines_ignored = 0
+
         # For each line in the logfile ... 
         with open(logfile_path) as file:
             for line in file:
@@ -159,7 +222,7 @@ class Dex:
         """Converts a list of db namespaces to a list of namespace tuples,
             supporting basic commandline wildcards"""
         output_namespaces = []
-        if input_namespaces is []:
+        if input_namespaces == []:
             return output_namespaces
         elif '*' in input_namespaces:
             if len(input_namespaces) > 1:
@@ -198,21 +261,32 @@ class Dex:
             return True
         else:
             return self._tuple_requested(namespace_tuple, requested_namespaces)
-        return False
 
     ############################################################################
     def _tuple_requested(self, namespace_tuple, requested_namespaces):
         """Helper for _namespace_requested. Supports limited wildcards"""
         if namespace_tuple is None:
             return False
-        for requested_namespace in requested_namespaces:   
+        for requested_namespace in requested_namespaces:
             if (((requested_namespace[0] is '*') or
-                 (requested_namespace[0] == namespace_tuple[0])) and
+                 (requested_namespace[0].encode('utf-8') == namespace_tuple[0].encode('utf-8'))) and
                 ((requested_namespace[1] is '*') or
-                 (requested_namespace == namespace_tuple[1]))):
+                 (requested_namespace[1].encode('utf-8') == namespace_tuple[1].encode('utf-8')))):
                 return True
         return False
-                                    
+
+    ############################################################################
+    def _get_requested_databases(self, requested_namespaces):
+        """Returns a list of databases requested, not including ignored dbs"""
+        requested_databases = []
+        if ((requested_namespaces is not None) and
+            (requested_namespaces != [])):
+            for requested_namespace in requested_namespaces:
+                if requested_namespace[0] is '*':
+                    return []
+                elif requested_namespace[0] not in IGNORE_DBS:
+                    requested_databases.append(requested_namespace[0])
+        return requested_databases
 
 ################################################################################
 # QueryAnalyzer
@@ -238,7 +312,8 @@ class QueryAnalyzer:
         query_analysis = self._generate_query_analysis(parsed_query,
                                                        db_name,
                                                        collection_name)
-        if query_analysis['supported']:
+        if ((query_analysis['analyzedFields'] != []) and
+            query_analysis['supported']):
             index_analysis = self._generate_index_analysis(query_analysis,
                                                            indexes)
             if index_analysis['needsRecommendation']:
@@ -456,7 +531,37 @@ class QueryAnalyzer:
             
     ############################################################################
     def clear_cache(self):
-        self._internal_map = {} 
+        self._internal_map = {}
+
+################################################################################
+# ProfileParser
+#   Extracts queries from log lines using a list of QueryLineHandlers
+################################################################################
+class ProfileParser:
+    def __init__(self):
+        pass
+
+    ############################################################################
+    def parse(self, input):
+        """Passes input to each QueryLineHandler in use"""
+        if input['op'] == 'insert':
+            return None
+        elif input['op'] == 'update':
+            raw_query = input['query']
+            raw_query['ns'] = input['ns']
+            return raw_query
+        elif input['op'] == 'query':
+            raw_query = input['query']
+            raw_query['ns'] = input['ns']
+            return raw_query
+        elif ((input['op'] == 'command') and
+              (input['command'].has_key('count'))):
+            raw_query = { 'query': input['command']['query'] }
+            db = input['ns'][0:input['ns'].rfind('.')]
+            raw_query['ns'] = db + "." + input['command']['count']
+            return raw_query
+
+
 
 ################################################################################
 # LogParser
@@ -519,6 +624,11 @@ class LogParser:
                 query = self._yamlfy_query(match.group('query'))
                 if query is not None:
                     query['ns'] =  match.group('ns')
+                    if query["query"].has_key("$orderby"):
+                        query["orderby"] = query["query"]["$orderby"]
+                        del(query["query"]["$orderby"])
+                    if query['query'].has_key("$query"):
+                        query["query"] = query["query"]["$query"]
                 return query
             return None
 

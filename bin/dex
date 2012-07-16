@@ -35,7 +35,7 @@ from datetime import  datetime
 
 PARSER_DEFINITION ={
     "prog": "dex",
-    "description" : "Scans a provided MongoDB log file and uses the provided URI to compare queries found in the logfile to the indexes available in the database, recommending indexes for those queries which are not indexed. Recommended for MongoDB version 2.0.4 or later.",
+    "description" : "Scans a provided MongoDB log file or profile collection and uses the provided \nURI to compare queries found in the logfile or profile collection to the indexes \navailable in the database, recommending indexes for those  queries which are not \nindexed. Recommended for MongoDB version 2.0.4 or later.",
     "args": [
              {
              "name": "uri",
@@ -57,7 +57,7 @@ PARSER_DEFINITION ={
              {
              "name": "use_profile",
              "type" : "optional",
-             "help": "flag to examine the MongoDB system.profile collection. If set, the profile collection will be searched for queries. NOT YET SUPPORTED.",
+             "help": "flag to examine the MongoDB system.profile collection. If set, the profile collection will be searched for queries.",
              "cmd_arg": [
                          "-p",
                          "--profile"

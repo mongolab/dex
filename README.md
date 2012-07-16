@@ -65,19 +65,19 @@ connection URI for the admin database.
 ```
 Usage: dex [<options>] uri
 
-Scans a provided MongoDB log file and uses the provided URI to compare queries
-found in the logfile or profile collection to the indexes available in the
-database, recommending indexes for those queries which are not indexed.
-Recommended for MongoDB version 2.0.4 or later.
+Scans a provided MongoDB log file or profile collection and uses the provided
+URI to compare queries found in the logfile or profile collection to the indexes
+available in the database, recommending indexes for those  queries which are not
+indexed. Recommended for MongoDB version 2.0.4 or later.
 
 Options:
   -h, --help            show this help message and exit
   -f LOGFILE_PATH, --file LOGFILE_PATH
                         path to a MongoDB log file. If provided, the file will
-                        be searched for queries. Currenly not accepted with -p.
+                        be searched for queries.
   -p, --profile         flag to examine the MongoDB system.profile collection.
                         If set, the profile collection will be searched for
-                        queries. Currently not accepted with -f.
+                        queries.
   -n NAMESPACES, --namespace NAMESPACES
                         a MongoDB namespace (db.collection). Can be provided
                         multiple times. This option creates a filter, and

@@ -140,7 +140,6 @@ class Dex:
                     databases.remove(ignore_db)
 
         for database in databases:
-            print database
             profile_entries = connection[database]['system.profile'].find()
 
             for profile_entry in profile_entries:

@@ -109,19 +109,11 @@ def main(args):
     options = darg_parser.parse_args(args)
     namespaces = options.namespaces
 
-    md = dex.Dex()
+    md = dex.Dex(options.uri, options.verbose, namespaces)
     if options.use_profile:
-        return md.analyze_profile(options.uri,
-                                  namespaces,
-                                  options.verbose)
-    if options.logfile_path is None:
-        print 'Error: Logifle option (-f/--logfile) is currently required.'
-        return 1
-    else:
-        return md.analyze_logfile(options.uri,
-                                  options.logfile_path,
-                                  namespaces,
-                                  options.verbose)
+        return md.analyze_profile()
+    elif options.logfile_path is not None:
+        return md.analyze_logfile(options.logfile_path)
 
 
 ###############################################################################

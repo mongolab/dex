@@ -71,8 +71,13 @@ def pretty_json(obj):
 class Dex:
     
     ############################################################################
-    def __init__(self):
+    def __init__(self, db_uri, verbose, namespaces_list):
         self._query_analyzer = QueryAnalyzer()
+        self._db_uri = db_uri
+        self._verbose = verbose
+        self._requested_namespaces = self._validate_namespaces(namespaces_list)
+        self._recommendation_cache = []
+
 
     ############################################################################
     def analyze_query(self, db_uri, query, db_name, collection_name):
@@ -83,19 +88,50 @@ class Dex:
                                                            collection_name)
 
     ############################################################################
-    def analyze_profile(self, db_uri, namespaces_list, verbose):
+    def _process_query(self, input, parser, out):
+        out['linesPassed'] += 1
+        raw_query = parser.parse(input)
+        if raw_query is not None:
+            out['linesProcessed'] += 1
+            namespace_tuple = self._tuplefy_namespace(raw_query['ns'])
+            # If the query is for a requested namespace ....
+            if self._namespace_requested(raw_query['ns']):
+                db_name = namespace_tuple[0]
+                collection_name = namespace_tuple[1]
+
+                try:
+                    query_report = self.analyze_query(self._db_uri,
+                                                      raw_query,
+                                                      db_name,
+                                                      collection_name)
+                except:
+                    return 1
+                recommendation = query_report['recommendation']
+                if recommendation is not None:
+                    out['linesRecommended'] += 1
+                    # Cache the signature to suppress duplicate output
+                    if recommendation not in self._recommendation_cache:
+                        out['uniqueRecommendations'] += 1
+                        self._recommendation_cache.append(recommendation)
+
+                        if self._verbose:
+                            sys.stderr.write(pretty_json(query_report) + '\n')
+                            out['results'].append(query_report)
+                        else:
+                            sys.stderr.write(pretty_json(recommendation) + '\n')
+                            out['results'].append(recommendation)
+
+    ############################################################################
+    def analyze_profile(self):
         """Analyzes queries from a given log file"""
         out = { 'results': [],
                 'linesRecommended': 0,
                 'uniqueRecommendations': 0,
                 'linesProcessed': 0,
                 'linesPassed': 0 }
-        requested_namespaces = self._validate_namespaces(namespaces_list)
         profile_parser = ProfileParser()
-        recommendation_cache = []
-
-        databases = self._get_requested_databases(requested_namespaces)
-        connection = pymongo.Connection(db_uri)
+        databases = self._get_requested_databases()
+        connection = pymongo.Connection(self._db_uri)
 
         if databases == []:
             databases = connection.database_names()
@@ -104,40 +140,14 @@ class Dex:
                     databases.remove(ignore_db)
 
         for database in databases:
+            print database
             profile_entries = connection[database]['system.profile'].find()
 
             for profile_entry in profile_entries:
-                raw_query = profile_parser.parse(profile_entry)
+                self._process_query(profile_entry,
+                                    profile_parser,
+                                    out)
 
-                if raw_query is not None:
-                    namespace_tuple = self._tuplefy_namespace(raw_query['ns'])
-                    # If the query is for a requested namespace ....
-                    if self._namespace_requested(raw_query['ns'],
-                                                 requested_namespaces):
-                        db_name = namespace_tuple[0]
-                        collection_name = namespace_tuple[1]
-
-                        try:
-                            query_report = self.analyze_query(db_uri,
-                                                              raw_query,
-                                                              db_name,
-                                                              collection_name)
-                        except:
-                            return 1
-                        recommendation = query_report['recommendation']
-                        if recommendation is not None:
-                            out['linesRecommended'] += 1
-                            # Cache the signature to suppress duplicate output
-                            if recommendation not in recommendation_cache:
-                                out['uniqueRecommendations'] += 1
-                                recommendation_cache.append(recommendation)
-
-                                if verbose:
-                                    sys.stderr.write(pretty_json(query_report) + '\n')
-                                    out['results'].append(query_report)
-                                else:
-                                    sys.stderr.write(pretty_json(recommendation) + '\n')
-                                    out['results'].append(recommendation)
         # Print summary statistics
         sys.stderr.write('Total system.profile entries read: %i\n' % (out['linesPassed']))
         sys.stderr.write('Understood system.profile entries: %i\n' % (out['linesProcessed']))
@@ -147,53 +157,19 @@ class Dex:
         return 0
 
         ############################################################################
-    def analyze_logfile(self, db_uri, logfile_path, namespaces_list, verbose):
+    def analyze_logfile(self, logfile_path):
         """Analyzes queries from a given log file"""
         out = { 'results': [],
                 'linesRecommended': 0,
                 'uniqueRecommendations': 0,
                 'linesProcessed': 0,                    
                 'linesPassed': 0 }
-        requested_namespaces = self._validate_namespaces(namespaces_list)
         log_parser = LogParser()
-        recommendation_cache = []
 
         # For each line in the logfile ... 
         with open(logfile_path) as file:
             for line in file:
-                out['linesPassed'] += 1
-                raw_query = log_parser.parse(line)  
-                # For a comprehensible query ...
-                if raw_query is not None:
-                    out['linesProcessed'] += 1
-                    namespace_tuple = self._tuplefy_namespace(raw_query['ns'])
-                    # If the query is for a requested namespace ....
-                    if self._namespace_requested(raw_query['ns'],
-                                                 requested_namespaces):
-                        db_name = namespace_tuple[0]
-                        collection_name = namespace_tuple[1]
-                        # Analyze the query, receiving its signature in return
-                        try:
-                            query_report = self.analyze_query(db_uri,
-                                                              raw_query,
-                                                              db_name,
-                                                              collection_name)
-                        except:
-                            return 1
-                        recommendation = query_report['recommendation']
-                        if recommendation is not None:
-                            out['linesRecommended'] += 1
-                            # Cache the signature to suppress duplicate output
-                            if recommendation not in recommendation_cache:
-                                out['uniqueRecommendations'] += 1
-                                recommendation_cache.append(recommendation)
-                            
-                                if verbose:
-                                    sys.stderr.write(pretty_json(query_report) + '\n')
-                                    out['results'].append(query_report)
-                                else:
-                                    sys.stderr.write(pretty_json(recommendation) + '\n')
-                                    out['results'].append(recommendation)
+                self._process_query(line, log_parser, out)
         # Print summary statistics
         sys.stderr.write('Total lines read: %i\n' % (out['linesPassed']))
         sys.stderr.write('Understood query lines: %i\n' % (out['linesProcessed']))
@@ -247,27 +223,27 @@ class Dex:
         return output_namespaces
                                    
     ############################################################################                             
-    def _namespace_requested(self, namespace, requested_namespaces):
+    def _namespace_requested(self, namespace):
         """Checks whether the requested_namespaces contain the provided
             namespace"""
-        namespace_tuple = self._tuplefy_namespace(namespace)
         if namespace is None:
             return False
-        elif namespace_tuple[0] in IGNORE_DBS:
+        namespace_tuple = self._tuplefy_namespace(namespace)
+        if namespace_tuple[0] in IGNORE_DBS:
             return False
         elif namespace_tuple[1] in IGNORE_COLLECTIONS:
             return False
-        elif len(requested_namespaces) is 0:
-            return True
         else:
-            return self._tuple_requested(namespace_tuple, requested_namespaces)
+            return self._tuple_requested(namespace_tuple)
 
     ############################################################################
-    def _tuple_requested(self, namespace_tuple, requested_namespaces):
+    def _tuple_requested(self, namespace_tuple):
         """Helper for _namespace_requested. Supports limited wildcards"""
         if namespace_tuple is None:
             return False
-        for requested_namespace in requested_namespaces:
+        elif len(self._requested_namespaces) is 0:
+            return True
+        for requested_namespace in self._requested_namespaces:
             if (((requested_namespace[0] is '*') or
                  (requested_namespace[0].encode('utf-8') == namespace_tuple[0].encode('utf-8'))) and
                 ((requested_namespace[1] is '*') or
@@ -276,12 +252,12 @@ class Dex:
         return False
 
     ############################################################################
-    def _get_requested_databases(self, requested_namespaces):
+    def _get_requested_databases(self):
         """Returns a list of databases requested, not including ignored dbs"""
         requested_databases = []
-        if ((requested_namespaces is not None) and
-            (requested_namespaces != [])):
-            for requested_namespace in requested_namespaces:
+        if ((self._requested_namespaces is not None) and
+            (self._requested_namespaces != [])):
+            for requested_namespace in self._requested_namespaces:
                 if requested_namespace[0] is '*':
                     return []
                 elif requested_namespace[0] not in IGNORE_DBS:
@@ -544,18 +520,28 @@ class ProfileParser:
     ############################################################################
     def parse(self, input):
         """Passes input to each QueryLineHandler in use"""
+        raw_query = {}
         if input['op'] == 'insert':
             return None
-        elif input['op'] == 'update':
-            raw_query = input['query']
+        elif input['op'] == 'query':
+            if input['query'].has_key('$query'):
+                raw_query['query'] = input['query']['$query']
+                if input['query'].has_key('$orderby'):
+                    raw_query['orderby'] = input['query']['$orderby']
+            else:
+                raw_query['query'] = input['query']
             raw_query['ns'] = input['ns']
             return raw_query
-        elif input['op'] == 'query':
-            raw_query = input['query']
+        elif input['op'] == 'update':
+            raw_query['query'] = input['query']
+            if input.has_key('updateobj'):
+                if input['updateobj'].has_key('orderby'):
+                    raw_query['orderby'] = input['updateobj']['orderby']
             raw_query['ns'] = input['ns']
             return raw_query
         elif ((input['op'] == 'command') and
               (input['command'].has_key('count'))):
+
             raw_query = { 'query': input['command']['query'] }
             db = input['ns'][0:input['ns'].rfind('.')]
             raw_query['ns'] = db + "." + input['command']['count']

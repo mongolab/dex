@@ -73,7 +73,7 @@ class test_dex(unittest.TestCase):
         pass
    
     def test_analyze_query(self):
-        test_dex = dex.Dex()
+        test_dex = dex.Dex(TEST_URI, False, [])
         
         test_query = "{ query: { simpleUnindexedField: null }, ns: 'dex_test.test_collection'}"
         result = test_dex.analyze_query(TEST_URI,
@@ -203,7 +203,7 @@ class test_dex(unittest.TestCase):
         self.assertEqual(result['recommendation'], None)
                 
     def test_generate_query_analysis(self):
-        analyzer = dex.Dex()._query_analyzer
+        analyzer = dex.Dex(TEST_URI, False, [])._query_analyzer
 
         analysis = analyzer._generate_query_analysis(yaml.load('{query: { a: null }}'), 'db', 'collection')
         self.assertEqual(analysis['fieldCount'], 1)
@@ -239,7 +239,7 @@ class test_dex(unittest.TestCase):
         self.assertEqual(analysis['analyzedFields'][3]['fieldType'], 'UNSUPPORTED')
                 
     def test_generate_index_report(self):
-        analyzer = dex.Dex()._query_analyzer
+        analyzer = dex.Dex(TEST_URI, False, [])._query_analyzer
 
         index = {"key": [ ("complexIndexedFieldOne", -1), ("complexIndexedFieldTwo", -1)],
                  "v": 1}

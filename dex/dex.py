@@ -525,6 +525,10 @@ class ProfileParser:
     def parse(self, input):
         """Passes input to each QueryLineHandler in use"""
         raw_query = {}
+
+        if 'op' not in input:
+            return None
+
         if input['op'] == 'insert':
             return None
         elif input['op'] == 'query':

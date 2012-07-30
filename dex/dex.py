@@ -134,7 +134,12 @@ class Dex:
         connection = pymongo.Connection(self._db_uri)
 
         if databases == []:
-            databases = connection.database_names()
+            try:
+                databases = connection.database_names()
+            except:
+                print "Error: Could not list databases on server. Please check the auth components of your URI."
+                databases = []
+
             for ignore_db in IGNORE_DBS:
                 if ignore_db in databases:
                     databases.remove(ignore_db)

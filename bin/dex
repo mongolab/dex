@@ -66,6 +66,18 @@ PARSER_DEFINITION ={
              "nargs": 0,
              "default": False
              },
+            {
+            "name": "watch",
+            "type" : "optional",
+            "help": "Instructs Dex to watch the system.profile or log (depending on which -p/-f is specified) for entries, rather than processing existing content. Upon keyboard interrupt (Ctrl+C) watch terminates and the accumulated output is provided.",
+            "cmd_arg": [
+                "-w",
+                "--watch"
+            ],
+            "nargs": 1,
+            "action": "store_true",
+            "default": False
+            },
              {
              "name": "namespaces",
              "type" : "optional",
@@ -81,7 +93,7 @@ PARSER_DEFINITION ={
              {
              "name": "verbose",
              "type" : "optional",
-             "help": "enables provision of additional output information.",
+             "help": "enables provision of additional output information, including Dex's query and index analysis structures.",
              "cmd_arg": [
                          "-v",
                          "--verbose"
@@ -111,9 +123,15 @@ def main(args):
 
     md = dex.Dex(options.uri, options.verbose, namespaces)
     if options.use_profile:
-        return md.analyze_profile()
+        if options.watch is False:
+            return md.analyze_profile()
+        else:
+            return md.watch_profile()
     elif options.logfile_path is not None:
-        return md.analyze_logfile(options.logfile_path)
+        if options.watch is False:
+            return md.analyze_logfile(options.logfile_path)
+        else:
+            return md.watch_logfile(options.logfile_path)
 
 
 ###############################################################################

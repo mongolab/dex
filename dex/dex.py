@@ -23,7 +23,9 @@
 ################################################################################
 
 import pymongo
-import traceback
+import os
+import time
+import datetime
 import sys
 import json
 import re
@@ -37,6 +39,8 @@ from bson import json_util
 IGNORE_DBS = [  'local', 'admin']
 IGNORE_COLLECTIONS = [u'system.namespaces', u'system.profile', u'system.users', u'system.indexes']
 BACKGROUND_FLAG = 'true'
+WATCH_INTERVAL_SECONDS = 3.0
+DEFAULT_PROFILE_LEVEL = pymongo.SLOW_ONLY
 
 ################################################################################
 # Constants
@@ -124,11 +128,7 @@ class Dex:
     ############################################################################
     def analyze_profile(self):
         """Analyzes queries from a given log file"""
-        out = { 'results': [],
-                'linesRecommended': 0,
-                'uniqueRecommendations': 0,
-                'linesProcessed': 0,
-                'linesPassed': 0 }
+        out = self._get_initial_output()
         profile_parser = ProfileParser()
         databases = self._get_requested_databases()
         connection = pymongo.Connection(self._db_uri)
@@ -137,7 +137,7 @@ class Dex:
             try:
                 databases = connection.database_names()
             except:
-                print "Error: Could not list databases on server. Please check the auth components of your URI."
+                print "Error: Could not list databases on server. Please check the auth components of your URI or provide a namespace filter with -n."
                 databases = []
 
             for ignore_db in IGNORE_DBS:
@@ -153,21 +153,63 @@ class Dex:
                                     out)
 
         # Print summary statistics
-        sys.stderr.write('Total system.profile entries read: %i\n' % (out['linesPassed']))
-        sys.stderr.write('Understood system.profile entries: %i\n' % (out['linesProcessed']))
-        sys.stderr.write('Unique recommendations: %i\n' % (out['uniqueRecommendations']))
-        sys.stderr.write('System.profile entries impacted by recommendations: %i\n' % (out['linesRecommended']))
-        sys.stdout.write(pretty_json(out))
+        self._output_summary(out)
         return 0
 
-        ############################################################################
+    ############################################################################
+    def watch_profile(self):
+        """Analyzes queries from a given log file"""
+        out = self._get_initial_output()
+        profile_parser = ProfileParser()
+        databases = self._get_requested_databases()
+        connection = pymongo.Connection(self._db_uri)
+        enabled_profile = False
+
+        if databases == []:
+            try:
+                databases = connection.database_names()
+            except:
+                print "Error: Could not list databases on server. Please check the auth components of your URI."
+                databases = []
+
+            for ignore_db in IGNORE_DBS:
+                if ignore_db in databases:
+                    databases.remove(ignore_db)
+
+        if len(databases) != 1:
+            print "Error: Please use namespaces (-n) to specify a single database for profile watching."
+            return 1
+
+        database = databases[0]
+        db = connection[database]
+
+        initial_profile_level = db.profiling_level()
+
+        if initial_profile_level is pymongo.OFF:
+            print 'Profile level currently 0. Dex is setting profile level 1. To run --watch at profile level 2, enable profile level 2 before running Dex.'
+            db.set_profiling_level(DEFAULT_PROFILE_LEVEL)
+            enabled_profile = True
+
+        try:
+            for profile_entry in self._tail_profile(db, WATCH_INTERVAL_SECONDS):
+                self._process_query(profile_entry,
+                                    profile_parser,
+                                    out)
+        except KeyboardInterrupt:
+            print 'Interrupt received'
+        finally:
+            # Print summary statistics
+            self._output_summary(out)
+            if initial_profile_level is pymongo.OFF:
+                print 'Dex is resetting profile level to initial value of 0. You may wish to drop the system.profile collection.'
+                db.set_profiling_level(initial_profile_level)
+
+        return 0
+
+    ############################################################################
     def analyze_logfile(self, logfile_path):
         """Analyzes queries from a given log file"""
-        out = { 'results': [],
-                'linesRecommended': 0,
-                'uniqueRecommendations': 0,
-                'linesProcessed': 0,                    
-                'linesPassed': 0 }
+        out = self._get_initial_output()
         log_parser = LogParser()
 
         # For each line in the logfile ... 
@@ -175,12 +217,71 @@ class Dex:
             for line in file:
                 self._process_query(line, log_parser, out)
         # Print summary statistics
-        sys.stderr.write('Total lines read: %i\n' % (out['linesPassed']))
-        sys.stderr.write('Understood query lines: %i\n' % (out['linesProcessed']))
+        self._output_summary(out)
+        return 0
+
+    ############################################################################
+    def watch_logfile(self, logfile_path):
+        """Analyzes queries from the tail of a given log file"""
+        out = self._get_initial_output()
+        log_parser = LogParser()
+
+        # For each new line in the logfile ...
+        try:
+            for line in self._tail_file(open(logfile_path), WATCH_INTERVAL_SECONDS):
+                print line
+                self._process_query(line, log_parser, out)
+        except KeyboardInterrupt:
+            print 'Interrupt received'
+        finally:
+            # Print summary statistics
+            self._output_summary(out)
+
+        return 0
+
+    ############################################################################
+    def _get_initial_output(self):
+        """Singlesource for initializing an output dict"""
+        return { 'results': [],
+                 'linesRecommended': 0,
+                 'uniqueRecommendations': 0,
+                 'linesProcessed': 0,
+                 'linesPassed': 0 }
+
+    ############################################################################
+    def _output_summary(self, out):
+        """Prints output"""
+        sys.stderr.write('Total entries read: %i\n' % (out['linesPassed']))
+        sys.stderr.write('Understood entries: %i\n' % (out['linesProcessed']))
         sys.stderr.write('Unique recommendations: %i\n' % (out['uniqueRecommendations']))
-        sys.stderr.write('Lines impacted by recommendations: %i\n' % (out['linesRecommended']))
+        sys.stderr.write('Entries impacted by recommendations: %i\n' % (out['linesRecommended']))
         sys.stdout.write(pretty_json(out))
-        return 0      
+        sys.stdout.write("\n")
+
+    ############################################################################
+    def _tail_file(self, file, interval):
+        """Tails a file"""
+        while True:
+            where = file.tell()
+            line = file.readline()
+            if not line:
+                time.sleep(interval)
+                file.seek(where)
+            else:
+                yield line
+
+    ############################################################################
+    def _tail_profile(self, db, interval):
+        """Tails the system.profile collection"""
+        current_time = db['system.profile'].find_one()['ts']
+        #current_time = datetime.datetime.utcnow()
+        while True:
+            time.sleep(interval)
+            cursor = db['system.profile'].find({'ts': {'$gte': current_time}}).sort('ts', pymongo.ASCENDING)
+            for doc in cursor:
+                current_time = doc['ts']
+                yield doc
+
 
     ############################################################################
     def _tuplefy_namespace(self, namespace):
@@ -526,34 +627,35 @@ class ProfileParser:
         """Passes input to each QueryLineHandler in use"""
         raw_query = {}
 
-        if 'op' not in input:
-            return None
-
-        if input['op'] == 'insert':
-            return None
-        elif input['op'] == 'query':
-            if input['query'].has_key('$query'):
-                raw_query['query'] = input['query']['$query']
-                if input['query'].has_key('$orderby'):
-                    raw_query['orderby'] = input['query']['$orderby']
-            else:
+        if ((input is not None) and
+            (input.has_key('op'))):
+            if input['op'] == 'insert':
+                return None
+            elif input['op'] == 'query':
+                if input['query'].has_key('$query'):
+                    raw_query['query'] = input['query']['$query']
+                    if input['query'].has_key('$orderby'):
+                        raw_query['orderby'] = input['query']['$orderby']
+                else:
+                    raw_query['query'] = input['query']
+                raw_query['ns'] = input['ns']
+                return raw_query
+            elif input['op'] == 'update':
                 raw_query['query'] = input['query']
-            raw_query['ns'] = input['ns']
-            return raw_query
-        elif input['op'] == 'update':
-            raw_query['query'] = input['query']
-            if input.has_key('updateobj'):
-                if input['updateobj'].has_key('orderby'):
-                    raw_query['orderby'] = input['updateobj']['orderby']
-            raw_query['ns'] = input['ns']
-            return raw_query
-        elif ((input['op'] == 'command') and
-              (input['command'].has_key('count'))):
+                if input.has_key('updateobj'):
+                    if input['updateobj'].has_key('orderby'):
+                        raw_query['orderby'] = input['updateobj']['orderby']
+                raw_query['ns'] = input['ns']
+                return raw_query
+            elif ((input['op'] == 'command') and
+                  (input['command'].has_key('count'))):
 
-            raw_query = { 'query': input['command']['query'] }
-            db = input['ns'][0:input['ns'].rfind('.')]
-            raw_query['ns'] = db + "." + input['command']['count']
-            return raw_query
+                raw_query = { 'query': input['command']['query'] }
+                db = input['ns'][0:input['ns'].rfind('.')]
+                raw_query['ns'] = db + "." + input['command']['count']
+                return raw_query
+        else:
+            return None
 
 
 

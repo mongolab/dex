@@ -60,6 +60,35 @@ connection URI for the admin database.
 > dex -f my/mongod/data/path/mongodb.log -n "myFirstDb.*" -n "mySecondDb.*" mongodb://myUser:myPass@myHost:12345/admin
 ```
 
+### Watch Mode
+When you provide the -w/--watch argument, Dex does not process the full logfile
+or any existing contents in the system.profile collection. Instead, Dex evaluates
+entries as they are logged/profiled. Use a keyboard interrupt (Ctrl+C) to terminate
+Dex when running in watch mode.
+
+Use watch mode to obtain running information in real time.
+
+Example:
+
+```
+> dex -w -f my/mongod/data/path/mongodb.log mongodb://myUser:myPass@myHost:12345/myDb
+```
+
+Note that Dex still caches its suggestions, so each unique recommendation will
+only print once.
+
+When using -w/--watch with -p/--profile to watch the system.profile collection,
+you must currently filter your focus to one database by providing a namespace
+argument of the form -n "[db_name].*"
+For Example:
+
+```
+> dex -w -p -n "myDb.*" mongodb://myUser:myPass@myHost:12345/myDb
+```
+
+In addition, if profiling is not enabled, Dex will enable profile level 1 for
+the duration of its operation.
+
 ### Help Contents
 
 ```

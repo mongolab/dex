@@ -229,7 +229,6 @@ class Dex:
         # For each new line in the logfile ...
         try:
             for line in self._tail_file(open(logfile_path), WATCH_INTERVAL_SECONDS):
-                print line
                 self._process_query(line, log_parser, out)
         except KeyboardInterrupt:
             print 'Interrupt received'
@@ -261,6 +260,7 @@ class Dex:
     ############################################################################
     def _tail_file(self, file, interval):
         """Tails a file"""
+        file.seek(0,2)
         while True:
             where = file.tell()
             line = file.readline()
@@ -273,14 +273,23 @@ class Dex:
     ############################################################################
     def _tail_profile(self, db, interval):
         """Tails the system.profile collection"""
-        current_time = db['system.profile'].find_one()['ts']
-        #current_time = datetime.datetime.utcnow()
+        latest_doc = None
+        while latest_doc is None:
+            time.sleep(interval)
+            latest_doc = db['system.profile'].find_one()
+
+        current_time = latest_doc['ts']
+        print "starting at", current_time
+
         while True:
             time.sleep(interval)
             cursor = db['system.profile'].find({'ts': {'$gte': current_time}}).sort('ts', pymongo.ASCENDING)
             for doc in cursor:
                 current_time = doc['ts']
+                print current_time
                 yield doc
+
+            print "found", cursor.count()
 
 
     ############################################################################
@@ -615,64 +624,16 @@ class QueryAnalyzer:
         self._internal_map = {}
 
 ################################################################################
-# ProfileParser
-#   Extracts queries from log lines using a list of QueryLineHandlers
+# Parser
+#   Provides a parse function that passes input to a round of handlers.
 ################################################################################
-class ProfileParser:
-    def __init__(self):
-        pass
+class Parser(object):
+    def __init__(self, handlers):
+        self._line_handlers = handlers
 
-    ############################################################################
     def parse(self, input):
         """Passes input to each QueryLineHandler in use"""
-        raw_query = {}
-
-        if ((input is not None) and
-            (input.has_key('op'))):
-            if input['op'] == 'insert':
-                return None
-            elif input['op'] == 'query':
-                if input['query'].has_key('$query'):
-                    raw_query['query'] = input['query']['$query']
-                    if input['query'].has_key('$orderby'):
-                        raw_query['orderby'] = input['query']['$orderby']
-                else:
-                    raw_query['query'] = input['query']
-                raw_query['ns'] = input['ns']
-                return raw_query
-            elif input['op'] == 'update':
-                raw_query['query'] = input['query']
-                if input.has_key('updateobj'):
-                    if input['updateobj'].has_key('orderby'):
-                        raw_query['orderby'] = input['updateobj']['orderby']
-                raw_query['ns'] = input['ns']
-                return raw_query
-            elif ((input['op'] == 'command') and
-                  (input['command'].has_key('count'))):
-
-                raw_query = { 'query': input['command']['query'] }
-                db = input['ns'][0:input['ns'].rfind('.')]
-                raw_query['ns'] = db + "." + input['command']['count']
-                return raw_query
-        else:
-            return None
-
-
-
-################################################################################
-# LogParser
-#   Extracts queries from log lines using a list of QueryLineHandlers
-################################################################################
-class LogParser:
-    def __init__(self):
-        """Declares the QueryLineHandlers to use"""
-        self._line_handlers = [self.StandardQueryHandler(), 
-                               self.CmdQueryHandler(),
-                               self.UpdateQueryHandler()]
-
-    ############################################################################
-    def parse(self, input):
-        """Passes input to each QueryLineHandler in use"""
+        query = None
         for handler in self._line_handlers:
             try:
                 query = handler.handle(input)
@@ -682,6 +643,66 @@ class LogParser:
                 if query is not None:
                     return query
         return None
+
+################################################################################
+# ProfileParser
+#   Extracts queries from profile entries using a single ProfileEntryHandler
+################################################################################
+class ProfileParser(Parser):
+    def __init__(self):
+        """Declares the QueryLineHandlers to use"""
+        super(ProfileParser, self).__init__([self.ProfileEntryHandler()])
+
+    ############################################################################
+    # Base ProfileEntryHandler class
+    #   Knows how to yamlfy a logline query
+    ############################################################################
+    class ProfileEntryHandler:
+        ########################################################################
+        def handle(self, input):
+            raw_query = {}
+            if ((input is not None) and
+                (input.has_key('op'))):
+                if input['op'] == 'insert':
+                    return None
+                elif input['op'] == 'query':
+                    if input['query'].has_key('$query'):
+                        raw_query['query'] = input['query']['$query']
+                        if input['query'].has_key('$orderby'):
+                            raw_query['orderby'] = input['query']['$orderby']
+                    else:
+                        raw_query['query'] = input['query']
+                    raw_query['ns'] = input['ns']
+                    return raw_query
+                elif input['op'] == 'update':
+                    raw_query['query'] = input['query']
+                    if input.has_key('updateobj'):
+                        if input['updateobj'].has_key('orderby'):
+                            raw_query['orderby'] = input['updateobj']['orderby']
+                    raw_query['ns'] = input['ns']
+                    return raw_query
+                elif ((input['op'] == 'command') and
+                      (input['command'].has_key('count'))):
+
+                    raw_query = { 'query': input['command']['query'] }
+                    db = input['ns'][0:input['ns'].rfind('.')]
+                    raw_query['ns'] = db + "." + input['command']['count']
+                    return raw_query
+            else:
+                return None
+
+
+
+################################################################################
+# LogParser
+#   Extracts queries from log lines using a list of QueryLineHandlers
+################################################################################
+class LogParser(Parser):
+    def __init__(self):
+        """Declares the QueryLineHandlers to use"""
+        super(LogParser, self).__init__([self.StandardQueryHandler(),
+                                         self.CmdQueryHandler(),
+                                         self.UpdateQueryHandler()])
 
     ############################################################################
     # Base QueryLineHandler class
@@ -785,4 +806,3 @@ class LogParser:
                     query['ns'] =  match.group('ns')
                 return query
             return None
-

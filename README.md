@@ -99,6 +99,7 @@ URI to compare queries found in the logfile or profile collection to the indexes
 available in the database, recommending indexes for those  queries which are not
 indexed. Recommended for MongoDB version 2.0.4 or later.
 
+
 Options:
   -h, --help            show this help message and exit
   -f LOGFILE_PATH, --file LOGFILE_PATH
@@ -107,6 +108,11 @@ Options:
   -p, --profile         flag to examine the MongoDB system.profile collection.
                         If set, the profile collection will be searched for
                         queries.
+  -w, --watch           Instructs Dex to watch the system.profile or log
+                        (depending on which -p/-f is specified) for entries,
+                        rather than processing existing content. Upon keyboard
+                        interrupt (Ctrl+C) watch terminates and the
+                        accumulated output is provided.
   -n NAMESPACES, --namespace NAMESPACES
                         a MongoDB namespace (db.collection). Can be provided
                         multiple times. This option creates a filter, and
@@ -116,7 +122,8 @@ Options:
                         but also supported. An asterisk is shorthand for 'all'
                         --actual regexes are not supported. Note that -n '*'
                         is equivalent to not providing a -n argument.
-  -v, --verbose         enables provision of additional output information.
+  -v, --verbose         enables provision of additional output information,
+                        including Dex's query and index analysis structures.
 ```
 
 Requirements

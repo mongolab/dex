@@ -1,0 +1,375 @@
+<!DOCTYPE html>
+<html>
+
+  <head>
+    <meta charset='utf-8' />
+    <meta http-equiv="X-UA-Compatible" content="chrome=1" />
+    <meta name="description" content="Dex : Index and query analyzer for MongoDB: compares MongoDB log files and index entries to make index recommendations" />
+
+    <link rel="stylesheet" type="text/css" media="screen" href="stylesheets/stylesheet.css">
+
+    <title>Dex</title>
+  </head>
+
+  <body>
+
+    <!-- HEADER -->
+    <div id="header_wrap" class="outer">
+        <header class="inner">
+          <a id="forkme_banner" href="https://github.com/mongolab/dex">View on GitHub</a>
+
+          <h1 id="project_title">Dex</h1>
+          <h2 id="project_tagline">Index and query analyzer for MongoDB: compares MongoDB log files and index entries to make index recommendations</h2>
+
+            <section id="downloads">
+              <a class="zip_download_link" href="https://github.com/mongolab/dex/zipball/master">Download this project as a .zip file</a>
+              <a class="tar_download_link" href="https://github.com/mongolab/dex/tarball/master">Download this project as a tar.gz file</a>
+            </section>
+        </header>
+    </div>
+
+    <!-- MAIN CONTENT -->
+    <div id="main_content_wrap" class="outer">
+      <section id="main_content" class="inner">
+        <h2>Dex, the Index Bot</h2>
+
+<p>Dex is a MongoDB performance tuning tool that compares  queries to the
+available indexes in the queried collection(s) and generates index suggestions
+based on simple heuristics. Currently you must provide a connection URI for
+your database.</p>
+
+<p>Dex uses the URI you provide as a helpful way to determine when an index is
+recommended. Dex does not take existing indexes into account when actually
+constructing its ideal recommendation.</p>
+
+<p>Currently, Dex only recommends complete indexes, not partial indexes. Dex
+ignores partial indexes that may be used by the query in favor of a better
+index, if one is not found. Dex recommends partially-ordered indexes according
+to a rule of thumb:</p>
+
+<p>Your index field order should first answer:</p>
+
+<ol>
+<li>Equivalent value checks</li>
+<li>Sort clauses</li>
+<li>Range value checks ($in, $nin, $lt/gt, $lte/gte, etc.)</li>
+</ol><p>Note that your data cardinality may warrant a different order than the suggested
+indexes.</p>
+
+<h2>Usage</h2>
+
+<h3>Common</h3>
+
+<p>Run Dex on a log file and provide a URI (with auth credentials, if any) to the
+corresponding database.</p>
+
+<pre><code>&gt; dex -f my/mongod/data/path/mongodb.log mongodb://myUser:myPass@myHost:12345/myDb
+</code></pre>
+
+<p>Or, run Dex on a populated MongoDB system.profile collection. It is recommended
+that you run db.enableProfilingLevel(1), and wait until a representative set of
+queries/operations have been run on the database. Then run db.setProfilingLevel(0)
+to stop profiling. Then, run Dex:</p>
+
+<pre><code>&gt; dex -p mongodb://myUser:myPass@myHost:12345/myDb
+</code></pre>
+
+<p>Note: Because Dex is chiefly concerned with un-indexed queries, Dex output should not
+be affected by the additional data produced by profiling level 2. However, Dex may
+take longer to run.</p>
+
+<h3>Filtered</h3>
+
+<p>Dex also supports filtering this analysis by specific collections and databases.
+Note that when you intend to analyze multiple databases you must provide a
+connection URI for the admin database.</p>
+
+<pre><code>&gt; dex -f my/mongod/data/path/mongodb.log -n "myFirstDb.collectionOne" mongodb://myUser:myPass@myHost:12345/myFirstDb
+
+&gt; dex -p -n "*.collectionOne" mongodb://myUser:myPass@myHost:12345/admin
+
+&gt; dex -f my/mongod/data/path/mongodb.log -n "myFirstDb.*" -n "mySecondDb.*" mongodb://myUser:myPass@myHost:12345/admin
+</code></pre>
+
+<h3>Watch Mode</h3>
+
+<p>When you provide the -w/--watch argument, Dex does not process the full logfile
+or any existing contents in the system.profile collection. Instead, Dex evaluates
+entries as they are logged/profiled. Use a keyboard interrupt (Ctrl+C) to terminate
+Dex when running in watch mode.</p>
+
+<p>Use watch mode to obtain running information in real time.</p>
+
+<p>Example:</p>
+
+<pre><code>&gt; dex -w -f my/mongod/data/path/mongodb.log mongodb://myUser:myPass@myHost:12345/myDb
+</code></pre>
+
+<p>Note that Dex still caches its suggestions, so each unique recommendation will
+only print once.</p>
+
+<p>When using -w/--watch with -p/--profile to watch the system.profile collection,
+you must currently filter your focus to one database by providing a namespace
+argument of the form -n "[db_name].*"
+For Example:</p>
+
+<pre><code>&gt; dex -w -p -n "myDb.*" mongodb://myUser:myPass@myHost:12345/myDb
+</code></pre>
+
+<p>In addition, if profiling is not enabled, Dex will enable profile level 1 for
+the duration of its operation.</p>
+
+<h3>Help Contents</h3>
+
+<pre><code>Usage: dex [&lt;options&gt;] uri
+
+Scans a provided MongoDB log file or profile collection and uses the provided
+URI to compare queries found in the logfile or profile collection to the indexes
+available in the database, recommending indexes for those  queries which are not
+indexed. Recommended for MongoDB version 2.0.4 or later.
+
+
+Options:
+  -h, --help            show this help message and exit
+  -f LOGFILE_PATH, --file LOGFILE_PATH
+                        path to a MongoDB log file. If provided, the file will
+                        be searched for queries.
+  -p, --profile         flag to examine the MongoDB system.profile collection.
+                        If set, the profile collection will be searched for
+                        queries.
+  -w, --watch           Instructs Dex to watch the system.profile or log
+                        (depending on which -p/-f is specified) for entries,
+                        rather than processing existing content. Upon keyboard
+                        interrupt (Ctrl+C) watch terminates and the
+                        accumulated output is provided.
+  -n NAMESPACES, --namespace NAMESPACES
+                        a MongoDB namespace (db.collection). Can be provided
+                        multiple times. This option creates a filter, and
+                        queries not in the provided namespace(s) will not be
+                        analyzed. Format: -n ('db.collection' | '*' | 'db.*' |
+                        'collection'). '*.*' and '*.collection' are redundant
+                        but also supported. An asterisk is shorthand for 'all'
+                        --actual regexes are not supported. Note that -n '*'
+                        is equivalent to not providing a -n argument.
+  -v, --verbose         enables provision of additional output information,
+                        including Dex's query and index analysis structures.
+</code></pre>
+
+<h2>Requirements</h2>
+
+<p>Dex is designed to comprehend logs and profile collections for mongod 2.0.4 or later.</p>
+
+<p>Libraries:</p>
+
+<ul>
+<li>pyyaml</li>
+<li>pymongo</li>
+<li>dargparse</li>
+</ul><h2>Installation</h2>
+
+<pre><code>&gt; pip install dex
+</code></pre>
+
+<h2>Testing</h2>
+
+<p>To run Dex's unit test suite, you must bring up a mongodb server on 27017. Dex
+will use create the dex_test db and drop it when the tests are complete.</p>
+
+<pre><code>&gt; python -m dex.test.test
+</code></pre>
+
+<h2>Output</h2>
+
+<h3>Default</h3>
+
+<p>By default, Dex outputs each unique recommendation. A recommendation includes a
+db name, index command, and the fields from the query that prompted the
+recommendation. Dex concludes a run with a list of run statistics, including:</p>
+
+<ul>
+<li>Total lines read - Total number of lines in the input file</li>
+<li>Understood query lines - Number of lines successfully parsed by the LogParser. 
+For the average case, this line is expected to be somewhat low compared to
+Total Lines Read.</li>
+<li>Unique recommendations - Number of unique recommendations found for all
+understood query lines</li>
+<li>Lines impacted by recommendations - Total number of understood lines that
+generated recommendations.</li>
+</ul><h4>Runtime Output to STDERR</h4>
+
+<p>Dex provides runtime output as it processes. In default mode, Dex outputs each
+unique recommendation it generates, and concludes with run statistics. Each
+recommendation includes the following fields:</p>
+
+<ul>
+<li>namespace - The db.collection name.</li>
+<li>index - A json string describing the recommended index.</li>
+<li>shellCommand - A helpful cut-and-paste command to create the index from
+the MongoDB shell.</li>
+</ul><p>Sample: </p>
+
+<pre><code>...
+{
+    "index": "{'simpleIndexedField': 1, 'simpleUnindexedFieldThree': 1}", 
+    "namespace": "dex_test.test_collection" 
+    "shellCommand": "db.test_collection.ensureIndex({'simpleIndexedField': 1, 'simpleUnindexedFieldThree': 1}, {'background': true})"
+}
+...
+Total lines read: 7
+Understood query lines: 7
+Unique recommendations: 5
+Lines impacted by recommendations: 5
+</code></pre>
+
+<h4>Final Output to STDOUT</h4>
+
+<p>Dex returns a JSON document containing runtime statistics and each unique
+recommendation.</p>
+
+<p>Sample:</p>
+
+<pre><code>{
+    "linesPassed": 7, 
+    "linesRecommended": 5, 
+    "results": [
+        {
+            "index-json": "{'simpleUnindexedField': 1}", 
+            "shell-command": "db.test_collection.ensureIndex({'simpleUnindexedField': 1}, {'background': true})", 
+            "namespace": "dex_test.test_collection" 
+        }, 
+       ...
+    ], 
+    "uniqueRecommendations": 5, 
+    "linesProcessed": 7
+}
+</code></pre>
+
+<h3>Verbose</h3>
+
+<p>When -v/--verbose is specified, Dex outputs the full query report for each
+unique recommendation, including:</p>
+
+<ul>
+<li>namespace - The db.collection name.</li>
+<li>rawFields - Raw fields extracted from the query</li>
+<li>queryAnalysis - Provides basic information about the query, such as
+fieldCount), as well as the analyzed type of each field. 'suppported' is
+False when the query contains an UNSUPPORTED field.</li>
+<li>
+<p>indexAnalysis - Shows which indexes cover the query (either in full
+or partially), and whether or not the analysis shows room for improvement.
+For each index, the following information is available:</p>
+
+<p>idealOrder - Is the index sorted according to Dex's internal heuristic.</p>
+
+<p>queryFieldsCovered - Number of query fields the index services.</p>
+
+<p>coverage - Indexes with a coverage of 'none' are not output. 'partial'
+coverage indicates that (0 &lt; query-fields-covered &lt; total-query-fields).
+'full' coverage indicates that (query-fields-covered == total-query-fields).</p>
+
+<p>supported - Indicates that the index is not of an unsupported type (such as 2d)</p>
+
+<p>index - The mongodb-provided document describing the index.</p>
+</li>
+<li><p>parsed - The raw query as read by Dex's LogParser.</p></li>
+<li><p>recommendation - The recommendation itself (as described in Default Output
+above)</p></li>
+</ul><p>Sample:</p>
+
+<pre><code>...
+{
+    "indexAnalysis": {
+        "needsRecommendation": true, 
+        "fullIndexes": [], 
+        "partialIndexes": [
+            {
+                "index": {
+                    "key": [
+                        [
+                            "simpleIndexedField", 
+                            1
+                        ]
+                    ], 
+                    "v": 1
+                }, 
+                "supported": true, 
+                "coverage": "partial", 
+                "idealOrder": true, 
+                "queryFieldsCovered": 1
+            }
+        ]
+    }, 
+    "parsed": {
+        "ns": "dex_test.test_collection", 
+        "query": {
+            "simpleIndexedField": "value"
+        }, 
+        "orderby": {
+            "simpleUnindexedFieldThree": -1
+        }, 
+        "findandmodify": "test_collection", 
+        "update": {
+            "$set": {
+                "something": "somethingelse"
+            }
+        }
+    }, 
+    "recommendation": {
+        "index": "{'simpleIndexedField': 1, 'simpleUnindexedFieldThree': 1}", 
+        "namespace": "dex_test.test_collection",
+        "shellCommand": "db.test_collection.ensureIndex({'simpleIndexedField': 1, 'simpleUnindexedFieldThree': 1}, {'background': true})"
+    }, 
+    "namespace": "dex_test.test_collection",
+    "queryAnalysis": {
+        "fieldCount": 2, 
+        "supported": true, 
+        "analyzedFields": [
+            {
+                "fieldName": "simpleIndexedField", 
+                "fieldType": "EQUIV"
+            }, 
+            {
+                "fieldName": "simpleUnindexedFieldThree", 
+                "fieldType": "SORT", 
+                "seq": 0
+            }
+        ]
+    }
+}
+...
+Total lines read: 7
+Understood query lines: 7
+Unique recommendations: 5
+Lines impacted by recommendations: 5
+
+</code></pre>
+
+<h3>Questions?</h3>
+
+<p>Email <a href="mailto:support@mongolab.com">support@mongolab.com</a></p>
+      </section>
+    </div>
+
+    <!-- FOOTER  -->
+    <div id="footer_wrap" class="outer">
+      <footer class="inner">
+        <p class="copyright">Dex maintained by <a href="https://github.com/mongolab">mongolab</a></p>
+        <p>Published with <a href="http://pages.github.com">GitHub Pages</a></p>
+      </footer>
+    </div>
+
+              <script type="text/javascript">
+            var gaJsHost = (("https:" == document.location.protocol) ? "https://ssl." : "http://www.");
+            document.write(unescape("%3Cscript src='" + gaJsHost + "google-analytics.com/ga.js' type='text/javascript'%3E%3C/script%3E"));
+          </script>
+          <script type="text/javascript">
+            try {
+              var pageTracker = _gat._getTracker("dex-gh-pages-home");
+            pageTracker._trackPageview();
+            } catch(err) {}
+          </script>
+
+
+  </body>
+</html>

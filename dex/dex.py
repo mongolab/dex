@@ -279,17 +279,13 @@ class Dex:
             latest_doc = db['system.profile'].find_one()
 
         current_time = latest_doc['ts']
-        print "starting at", current_time
 
         while True:
             time.sleep(interval)
             cursor = db['system.profile'].find({'ts': {'$gte': current_time}}).sort('ts', pymongo.ASCENDING)
             for doc in cursor:
                 current_time = doc['ts']
-                print current_time
                 yield doc
-
-            print "found", cursor.count()
 
 
     ############################################################################

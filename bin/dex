@@ -40,8 +40,8 @@ PARSER_DEFINITION ={
              {
              "name": "uri",
              "type" : "positional",
-             "help": "database connection URI, including database path, and authentication if required. If authentication is is enabled and multiple databases need to be dexed, this URI should point to the admin database.",
-             "nargs": 1
+             "help": "database connection URI, including database path, and authentication if required. If authentication is is enabled and multiple databases need to be dexed, this URI should point to the admin database. Required for profile (-p) mode. Optional for logfile (-f) mode. If absent, Dex does not verify its logfile analysis against the database and recommends indexes for ALL queries.",
+             "nargs": "?"
              },
              {
              "name": "logfile_path",
@@ -57,7 +57,7 @@ PARSER_DEFINITION ={
              {
              "name": "use_profile",
              "type" : "optional",
-             "help": "flag to examine the MongoDB system.profile collection. If set, the profile collection will be searched for queries.",
+             "help": "flag to examine the MongoDB system.profile collection. If set, the profile collection will be searched for queries. URI is required for profile mode.",
              "cmd_arg": [
                          "-p",
                          "--profile"
@@ -122,12 +122,18 @@ def main(args):
     namespaces = options.namespaces
 
     md = dex.Dex(options.uri, options.verbose, namespaces)
+
     if options.use_profile:
+        if options.uri is None:
+            sys.stderr.write("URI is required for profile mode.\n")
+            return 1
         if options.watch is False:
             return md.analyze_profile()
         else:
             return md.watch_profile()
     elif options.logfile_path is not None:
+        if options.uri is None:
+            sys.stderr.write("No URI provided. Only logfile will be processed. You may recieve recommendations for indexes that already exist.\n")
         if options.watch is False:
             return md.analyze_logfile(options.logfile_path)
         else:

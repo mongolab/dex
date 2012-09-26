@@ -390,7 +390,7 @@ class QueryAnalyzer:
         recommendation = None
         parsed_query = self._mask_query(raw_query)
         namespace = raw_query['ns']
-        
+
         index_cache_entry = self._ensure_index_cache(db_uri,
                                                      db_name,
                                                      collection_name)
@@ -423,6 +423,8 @@ class QueryAnalyzer:
     ############################################################################
     def _ensure_index_cache(self, db_uri, db_name, collection_name):
         """Adds a collections index entries to the cache if not present"""
+        if db_uri is None:
+            return {'indexes' : None}
         if db_name not in self.get_cache():
             self._internal_map[db_name] = {}
         if collection_name not in self._internal_map[db_name]:
@@ -487,7 +489,7 @@ class QueryAnalyzer:
                                   'fieldType': field_type}
                 analyzed_fields.append(analyzed_field)
                 field_count += 1
-                                
+
         # QUERY ANALYSIS
         return {'analyzedFields': analyzed_fields,
                 'fieldCount': field_count,
@@ -500,19 +502,20 @@ class QueryAnalyzer:
         needs_recommendation = True
         full_indexes = []
         partial_indexes = []
-        
-        for index_key in indexes.keys():
-            index = indexes[index_key]
-            index_report = self._generate_index_report(index,
-                                                       query_analysis)
-            if index_report['supported'] is True:
-                if index_report['coverage'] == 'full':
-                    full_indexes.append(index_report)
-                    if index_report['idealOrder']:
-                        needs_recommendation = False
-                elif index_report['coverage'] == 'partial':
-                    partial_indexes.append(index_report)
-                    
+
+        if indexes is not None:
+            for index_key in indexes.keys():
+                index = indexes[index_key]
+                index_report = self._generate_index_report(index,
+                                                           query_analysis)
+                if index_report['supported'] is True:
+                    if index_report['coverage'] == 'full':
+                        full_indexes.append(index_report)
+                        if index_report['idealOrder']:
+                            needs_recommendation = False
+                    elif index_report['coverage'] == 'partial':
+                        partial_indexes.append(index_report)
+
         # INDEX ANALYSIS
         return {'fullIndexes': full_indexes,
                 'partialIndexes': partial_indexes,

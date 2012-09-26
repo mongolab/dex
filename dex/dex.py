@@ -137,7 +137,7 @@ class Dex:
             try:
                 databases = connection.database_names()
             except:
-                print "Error: Could not list databases on server. Please check the auth components of your URI or provide a namespace filter with -n."
+                sys.stderr.write("Error: Could not list databases on server. Please check the auth components of your URI or provide a namespace filter with -n.\n")
                 databases = []
 
             for ignore_db in IGNORE_DBS:
@@ -152,7 +152,7 @@ class Dex:
                                     profile_parser,
                                     out)
 
-        # Print summary statistics
+        # Output summary statistics
         self._output_summary(out)
         return 0
 
@@ -169,7 +169,7 @@ class Dex:
             try:
                 databases = connection.database_names()
             except:
-                print "Error: Could not list databases on server. Please check the auth components of your URI."
+                sys.stderr.write("Error: Could not list databases on server. Please check the auth components of your URI.\n")
                 databases = []
 
             for ignore_db in IGNORE_DBS:
@@ -177,7 +177,7 @@ class Dex:
                     databases.remove(ignore_db)
 
         if len(databases) != 1:
-            print "Error: Please use namespaces (-n) to specify a single database for profile watching."
+            sys.stderr.write("Error: Please use namespaces (-n) to specify a single database for profile watching.\n")
             return 1
 
         database = databases[0]
@@ -186,7 +186,7 @@ class Dex:
         initial_profile_level = db.profiling_level()
 
         if initial_profile_level is pymongo.OFF:
-            print 'Profile level currently 0. Dex is setting profile level 1. To run --watch at profile level 2, enable profile level 2 before running Dex.'
+            sys.stderr.write("Profile level currently 0. Dex is setting profile level 1. To run --watch at profile level 2, enable profile level 2 before running Dex.\n")
             db.set_profiling_level(DEFAULT_PROFILE_LEVEL)
             enabled_profile = True
 
@@ -196,12 +196,12 @@ class Dex:
                                     profile_parser,
                                     out)
         except KeyboardInterrupt:
-            print 'Interrupt received'
+            sys.stderr.write("Interrupt received\n")
         finally:
-            # Print summary statistics
+            # Output summary statistics
             self._output_summary(out)
             if initial_profile_level is pymongo.OFF:
-                print 'Dex is resetting profile level to initial value of 0. You may wish to drop the system.profile collection.'
+                sys.stderr.write("Dex is resetting profile level to initial value of 0. You may wish to drop the system.profile collection.\n")
                 db.set_profiling_level(initial_profile_level)
 
         return 0
@@ -216,7 +216,7 @@ class Dex:
         with open(logfile_path) as file:
             for line in file:
                 self._process_query(line, log_parser, out)
-        # Print summary statistics
+        # Output summary statistics
         self._output_summary(out)
         return 0
 
@@ -231,9 +231,9 @@ class Dex:
             for line in self._tail_file(open(logfile_path), WATCH_INTERVAL_SECONDS):
                 self._process_query(line, log_parser, out)
         except KeyboardInterrupt:
-            print 'Interrupt received'
+            sys.stderr.write("Interrupt received\n")
         finally:
-            # Print summary statistics
+            # Output summary statistics
             self._output_summary(out)
 
         return 0
@@ -249,7 +249,7 @@ class Dex:
 
     ############################################################################
     def _output_summary(self, out):
-        """Prints output"""
+        """Outputs summary statistics"""
         sys.stderr.write('Total entries read: %i\n' % (out['linesPassed']))
         sys.stderr.write('Understood entries: %i\n' % (out['linesProcessed']))
         sys.stderr.write('Unique recommendations: %i\n' % (out['uniqueRecommendations']))
@@ -313,23 +313,23 @@ class Dex:
         elif '*' in input_namespaces:
             if len(input_namespaces) > 1:
                 warning = 'Warning: Multiple namespaces are '
-                warning += 'ignored when one namespace is "*"'
-                print warning
+                warning += 'ignored when one namespace is "*"\n'
+                sys.stderr.write(warning)
             return output_namespaces
         else: 
             for namespace in input_namespaces:
                 namespace_tuple = self._tuplefy_namespace(namespace)
                 if namespace_tuple is None:
                     warning = 'Warning: Invalid namespace ' + namespace
-                    warning += ' will be ignored'
-                    print warning
+                    warning += ' will be ignored\n'
+                    sys.stderr.write(warning)
                 else:
                     if namespace_tuple not in output_namespaces:
                         output_namespaces.append(namespace_tuple)
                     else:
                         warning = 'Warning: Duplicate namespace ' + namespace
-                        warning += ' will be ignored'
-                        print warning                  
+                        warning += ' will be ignored\n'
+                        sys.stderr.write(warning)
         return output_namespaces
                                    
     ############################################################################                             
@@ -434,8 +434,8 @@ class QueryAnalyzer:
                 db = connection[db_name]
                 indexes = db[collection_name].index_information()
             except:
-                warning = 'Warning: unable to connect to ' + db_uri
-                print warning
+                warning = 'Warning: unable to connect to ' + db_uri + "\n"
+                sys.stderr.write(warning)
                 raise
             else:
                 internal_map_entry = {'indexes': indexes}

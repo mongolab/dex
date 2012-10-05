@@ -213,14 +213,13 @@ prompted the recommendation.
 the MongoDB shell.
 * queriesCovered - An array of unique query patterns addressed by the
 recommendation, and statistics for each.
-** queriesCovered.q - The query pattern
-** queriesCovered.s - The query's sort component, if any.
-** queriesCovered.queryCount - The total number of queries matching the query
+  * queriesCovered.q - The query pattern
+  * queriesCovered.s - The query's sort component, if any.
+  * queriesCovered.queryCount - The total number of queries matching the query
  pattern.
-recommendation.
-** queriesCovered.avgTimeMillis - The average time each query with the pattern
+  * queriesCovered.avgTimeMillis - The average time each query with the pattern
 takes.
-** queriesCovered.totalTimeMillis - The sum amount of time consumed by all of
+  * queriesCovered.totalTimeMillis - The sum amount of time consumed by all of
  the queries of that pattern.
 
 Sample:

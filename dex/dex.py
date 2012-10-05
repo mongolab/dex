@@ -37,10 +37,15 @@ from bson import json_util
 ################################################################################
 
 IGNORE_DBS = [  'local', 'admin']
-IGNORE_COLLECTIONS = [u'system.namespaces', u'system.profile', u'system.users', u'system.indexes']
+IGNORE_COLLECTIONS = [u'system.namespaces',
+                      u'system.profile',
+                      u'system.users',
+                      u'system.indexes']
 BACKGROUND_FLAG = 'true'
 WATCH_INTERVAL_SECONDS = 3.0
+WATCH_DISPLAY_REFRESH_SECONDS = 30.0
 DEFAULT_PROFILE_LEVEL = pymongo.SLOW_ONLY
+
 
 ################################################################################
 # Constants
@@ -81,6 +86,7 @@ class Dex:
         self._verbose = verbose
         self._requested_namespaces = self._validate_namespaces(namespaces_list)
         self._recommendation_cache = []
+        self._full_report = ReportAggregation()
 
 
     ############################################################################
@@ -95,6 +101,7 @@ class Dex:
     def _process_query(self, input, parser, out):
         out['linesPassed'] += 1
         raw_query = parser.parse(input)
+
         if raw_query is not None:
             out['linesProcessed'] += 1
             namespace_tuple = self._tuplefy_namespace(raw_query['ns'])
@@ -112,18 +119,11 @@ class Dex:
                     return 1
                 recommendation = query_report['recommendation']
                 if recommendation is not None:
+                    self._full_report.add_report(query_report)
                     out['linesRecommended'] += 1
                     # Cache the signature to suppress duplicate output
                     if recommendation not in self._recommendation_cache:
                         out['uniqueRecommendations'] += 1
-                        self._recommendation_cache.append(recommendation)
-
-                        if self._verbose:
-                            sys.stderr.write(pretty_json(query_report) + '\n')
-                            out['results'].append(query_report)
-                        else:
-                            sys.stderr.write(pretty_json(recommendation) + '\n')
-                            out['results'].append(recommendation)
 
     ############################################################################
     def analyze_profile(self):
@@ -137,7 +137,10 @@ class Dex:
             try:
                 databases = connection.database_names()
             except:
-                sys.stderr.write("Error: Could not list databases on server. Please check the auth components of your URI or provide a namespace filter with -n.\n")
+                message = "Error: Could not list databases on server. Please "\
+                +         "check the auth components of your URI or provide "\
+                +         "a namespace filter with -n.\n"
+                sys.stderr.write(message)
                 databases = []
 
             for ignore_db in IGNORE_DBS:
@@ -152,8 +155,8 @@ class Dex:
                                     profile_parser,
                                     out)
 
-        # Output summary statistics
-        self._output_summary(out)
+        self._output_aggregated_report()
+
         return 0
 
     ############################################################################
@@ -169,7 +172,9 @@ class Dex:
             try:
                 databases = connection.database_names()
             except:
-                sys.stderr.write("Error: Could not list databases on server. Please check the auth components of your URI.\n")
+                message = "Error: Could not list databases on server. Please "\
+                +         "check the auth components of your URI.\n"
+                sys.stderr.write(message)
                 databases = []
 
             for ignore_db in IGNORE_DBS:
@@ -177,7 +182,9 @@ class Dex:
                     databases.remove(ignore_db)
 
         if len(databases) != 1:
-            sys.stderr.write("Error: Please use namespaces (-n) to specify a single database for profile watching.\n")
+            message = "Error: Please use namespaces (-n) to specify a single "\
+            +         "database for profile watching.\n"
+            sys.stderr.write(message)
             return 1
 
         database = databases[0]
@@ -186,22 +193,31 @@ class Dex:
         initial_profile_level = db.profiling_level()
 
         if initial_profile_level is pymongo.OFF:
-            sys.stderr.write("Profile level currently 0. Dex is setting profile level 1. To run --watch at profile level 2, enable profile level 2 before running Dex.\n")
+            message = "Profile level currently 0. Dex is setting profile "\
+            +         "level 1. To run --watch at profile level 2, "\
+            +         "enable profile level 2 before running Dex.\n"
+            sys.stderr.write(message)
             db.set_profiling_level(DEFAULT_PROFILE_LEVEL)
             enabled_profile = True
 
+        output_time = time.time() + WATCH_DISPLAY_REFRESH_SECONDS
         try:
             for profile_entry in self._tail_profile(db, WATCH_INTERVAL_SECONDS):
                 self._process_query(profile_entry,
                                     profile_parser,
                                     out)
+                if time.time() >= output_time:
+                    self._output_aggregated_report()
+                    output_time = time.time() + WATCH_DISPLAY_REFRESH_SECONDS
         except KeyboardInterrupt:
             sys.stderr.write("Interrupt received\n")
         finally:
-            # Output summary statistics
-            self._output_summary(out)
+            self._output_aggregated_report()
             if initial_profile_level is pymongo.OFF:
-                sys.stderr.write("Dex is resetting profile level to initial value of 0. You may wish to drop the system.profile collection.\n")
+                message = "Dex is resetting profile level to initial value " \
+                +         "of 0. You may wish to drop the system.profile "
+                +         "collection.\n"
+                sys.stderr.write(message)
                 db.set_profiling_level(initial_profile_level)
 
         return 0
@@ -216,8 +232,8 @@ class Dex:
         with open(logfile_path) as file:
             for line in file:
                 self._process_query(line, log_parser, out)
-        # Output summary statistics
-        self._output_summary(out)
+        self._output_aggregated_report()
+
         return 0
 
     ############################################################################
@@ -227,14 +243,18 @@ class Dex:
         log_parser = LogParser()
 
         # For each new line in the logfile ...
+        output_time = time.time() + WATCH_DISPLAY_REFRESH_SECONDS
         try:
-            for line in self._tail_file(open(logfile_path), WATCH_INTERVAL_SECONDS):
+            for line in self._tail_file(open(logfile_path),
+                                        WATCH_INTERVAL_SECONDS):
                 self._process_query(line, log_parser, out)
+                if time.time() >= output_time:
+                    self._output_aggregated_report()
+                    output_time = time.time() + WATCH_DISPLAY_REFRESH_SECONDS
         except KeyboardInterrupt:
             sys.stderr.write("Interrupt received\n")
         finally:
-            # Output summary statistics
-            self._output_summary(out)
+            self._output_aggregated_report()
 
         return 0
 
@@ -246,6 +266,14 @@ class Dex:
                  'uniqueRecommendations': 0,
                  'linesProcessed': 0,
                  'linesPassed': 0 }
+
+    def _output_aggregated_report(self):
+        message = None
+        if self._verbose:
+            message = self._full_report.get_aggregated_reports_verbose()
+        else:
+            message = self._full_report.get_aggregated_reports()
+        sys.stdout.write(pretty_json(message) + "\n")
 
     ############################################################################
     def _output_summary(self, out):
@@ -671,6 +699,7 @@ class ProfileParser(Parser):
                             raw_query['orderby'] = input['query']['$orderby']
                     else:
                         raw_query['query'] = input['query']
+                    raw_query['millis'] = input['millis']
                     raw_query['ns'] = input['ns']
                     return raw_query
                 elif input['op'] == 'update':
@@ -678,6 +707,7 @@ class ProfileParser(Parser):
                     if input.has_key('updateobj'):
                         if input['updateobj'].has_key('orderby'):
                             raw_query['orderby'] = input['updateobj']['orderby']
+                    raw_query['millis'] = input['millis']
                     raw_query['ns'] = input['ns']
                     return raw_query
                 elif ((input['op'] == 'command') and
@@ -685,6 +715,7 @@ class ProfileParser(Parser):
 
                     raw_query = { 'query': input['command']['query'] }
                     db = input['ns'][0:input['ns'].rfind('.')]
+                    raw_query['millis'] = input['millis']
                     raw_query['ns'] = db + "." + input['command']['count']
                     return raw_query
             else:
@@ -739,6 +770,7 @@ class LogParser(Parser):
             if match is not None:
                 query = self._yamlfy_query(match.group('query'))
                 if query is not None:
+                    query['millis'] = match.group('query_time')
                     query['ns'] =  match.group('ns')
                     if query["query"].has_key("$orderby"):
                         query["orderby"] = query["query"]["$orderby"]
@@ -768,6 +800,7 @@ class LogParser(Parser):
             if match is not None:
                 query = self._yamlfy_query(match.group('query'))
                 if query is not None:
+                    query['millis'] = match.group('query_time')
                     if query.has_key('count'):
                         query['ns'] = match.group('db') + '.'
                         query['ns'] += query['count']
@@ -795,7 +828,7 @@ class LogParser(Parser):
             self._regex += '(?P<query>\{.*\}) update: (?P<update>\{.*\}) '
             self._regex += '(?P<options>(\S+ )*)(?P<query_time>\d+)ms'
             self._rx = re.compile(self._regex)
-        
+
         ########################################################################
         def handle(self, input):
             match = self._rx.match(input)
@@ -803,5 +836,127 @@ class LogParser(Parser):
                 query = self._yamlfy_query(match.group('query'))
                 if query is not None:
                     query['ns'] =  match.group('ns')
+                    query['millis'] = match.group('query_time')
                 return query
             return None
+
+################################################################################
+# ReportAggregation
+#   Stores a merged set of query reports with running statistics
+################################################################################
+class ReportAggregation:
+    def __init__(self):
+        self._reports = []
+
+    ############################################################################
+    def add_report(self, report):
+        """Adds a report to the report aggregation"""
+        existing_report = self._get_existing_Report(report)
+        if existing_report is not None:
+            self._merge_report(existing_report, report)
+        else:
+            self._reports.append(self._get_initial_report(report))
+
+    ############################################################################
+    def get_aggregated_reports_verbose(self):
+        """Returns the whole aggregation"""
+        return self._reports
+
+    ############################################################################
+    def get_aggregated_reports(self):
+        """Returns a minimized version of the aggregation"""
+        reports = []
+        for report in self._reports:
+            reports.append(self._get_abbreviated_report(report))
+        return reports
+
+    ############################################################################
+    def _get_existing_Report(self, report):
+        """Returns the aggregated report that matches report"""
+        for existing_report in self._reports:
+            if existing_report['namespace'] == report['namespace']:
+                if existing_report['recommendation'] == report['recommendation']:
+                    return existing_report
+        return None
+
+    ############################################################################
+    def _get_existing_query(self, report, queryAnalysis):
+        """Returns the query in report that matches queryAnalysis"""
+        mask = self._get_query_mask(queryAnalysis)
+        for query in report['queriesCovered']:
+            if mask['q'] == query['q']:
+                if mask.has_key('s'):
+                    if query.has_key('s'):
+                        if query['s'] == mask['s']:
+                            return query
+                else:
+                    if not query.has_key('s'):
+                        return query
+        return None
+
+    ############################################################################
+    def _merge_report(self, target, new):
+        """Merges a new report into the target report"""
+        query_millis = int(new['parsed']['millis'])
+        current_sig = self._get_existing_query(target, new['queryAnalysis'])
+
+        if current_sig is not None:
+            current_sig['totalTimeMillis'] += query_millis
+            current_sig['queryCount'] += 1
+            current_sig['avgTimeMillis'] = current_sig['totalTimeMillis'] / \
+                                           current_sig['queryCount']
+
+        else:
+            target['queriesCovered'].append(self._get_initial_query(new))
+
+        target['totalTimeMillis'] += query_millis
+        target['queryCount'] += 1
+        target['avgTimeMillis'] = target['totalTimeMillis'] / \
+                                  target['queryCount']
+
+    ############################################################################
+    def _get_initial_report(self, report):
+        """Returns a new aggregated report document"""
+        return {
+            'queriesCovered' : [ self._get_initial_query(report)],
+            'totalTimeMillis' : int(report['parsed']['millis']),
+            'avgTimeMillis' : int(report['parsed']['millis']),
+            'queryCount' : 1,
+            'recommendation' : report['recommendation'],
+            'namespace' : report['namespace']
+        }
+
+    ############################################################################
+    def _get_initial_query(self, report):
+        """Returns a new query query document from the report"""
+        initial_millis = int(report['parsed']['millis'])
+        query = self._get_query_mask(report['queryAnalysis'])
+        query['totalTimeMillis'] = initial_millis
+        query['queryCount'] = 1
+        query['avgTimeMillis'] = initial_millis
+        return query
+
+    ############################################################################
+    def _get_abbreviated_report(self, report):
+        """Returns a minimum of fields from the report"""
+        return { 'namespace' : report['namespace'],
+                 'index' : report['recommendation']['index'],
+                 'avgTimeMillis' : report['avgTimeMillis'],
+                 'queryCount': report['queryCount'],
+                 'totalTimeMillis': report['totalTimeMillis']}
+
+    ############################################################################
+    def _get_query_mask(self, queryAnalysis):
+        """Converts a queryAnalysis to a query mask"""
+        q = {}
+        s = {}
+        mask = { 'q': q }
+        for field in queryAnalysis['analyzedFields']:
+            if field['fieldType'] is not SORT_TYPE:
+                q[field['fieldName']] = '<' + field['fieldName'] + '>'
+            else:
+                s[field['fieldName']] = '<' + field['fieldName'] + '>'
+        mask = { 'q': q }
+        if len(s.keys()) is not 0:
+            mask['s'] = s
+        return mask

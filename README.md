@@ -207,9 +207,10 @@ recommendation.
 * avgTimeMillis - The average time each query currently takes.
 * totalTimeMillis - The sum amount of time consumed by all of the queries that
 prompted the recommendation.
-* recommendation.index - The index recommended.
-* recommendation.namespace - The recommendation namespace.
-* recommendation.shellCommand - A helpful string for creating the index in
+* recommendation - A fully-formed recommendation object.
+ * recommendation.index - The index recommended.
+ * recommendation.namespace - The recommendation namespace.
+ * recommendation.shellCommand - A helpful string for creating the index in
 the MongoDB shell.
 * queriesCovered - An array of unique query patterns addressed by the
 recommendation, and statistics for each.

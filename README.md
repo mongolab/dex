@@ -96,9 +96,8 @@ Usage: dex [<options>] uri
 
 Scans a provided MongoDB log file or profile collection and uses the provided
 URI to compare queries found in the logfile or profile collection to the indexes
-available in the database, recommending indexes for those  queries which are not
-indexed. Recommended for MongoDB version 2.0.4 or later.
-
+available in the database, recommending indexes for those queries which are not
+indexed. Recommended for MongoDB version 2.2.0 or later.
 
 Options:
   -h, --help            show this help message and exit
@@ -107,12 +106,14 @@ Options:
                         be searched for queries.
   -p, --profile         flag to examine the MongoDB system.profile collection.
                         If set, the profile collection will be searched for
-                        queries.
-  -w, --watch           Instructs Dex to watch the system.profile or log
+                        queries. URI is required for profile mode.
+  -w, --watch           instructs Dex to watch the system.profile or log
                         (depending on which -p/-f is specified) for entries,
                         rather than processing existing content. Upon keyboard
                         interrupt (Ctrl+C) watch terminates and the
-                        accumulated output is provided.
+                        accumulated output is provided. When using watch mode
+                        and profile mode together, you must target a specific
+                        database using -n "dbname.*"
   -n NAMESPACES, --namespace NAMESPACES
                         a MongoDB namespace (db.collection). Can be provided
                         multiple times. This option creates a filter, and
@@ -129,7 +130,8 @@ Options:
 Requirements
 --------
 
-Dex is designed to comprehend logs and profile collections for mongod 2.0.4 or later.
+Dex is designed to comprehend logs and profile collections for mongod 2.0.4 or
+later.
 
 Libraries:
 * pyyaml
@@ -157,165 +159,99 @@ Output
 --------
 
 ### Default
-By default, Dex outputs each unique recommendation. A recommendation includes a
-db name, index command, and the fields from the query that prompted the
-recommendation. Dex concludes a run with a list of run statistics, including:
-* Total lines read - Total number of lines in the input file
-* Understood query lines - Number of lines successfully parsed by the LogParser. 
-  For the average case, this line is expected to be somewhat low compared to
-  Total Lines Read.
-* Unique recommendations - Number of unique recommendations found for all
-  understood query lines
-* Lines impacted by recommendations - Total number of understood lines that
-  generated recommendations.
+Dex provides information and statistics for each unique recommendation. A
+recommendation includes:
+* Index - The index recommended.
+* queryCount - The total number of queries that will benefit from the
+recommendation.
+* namespace - The MongoDB namespace in which to create the index,
+in the form "db.collection"
+* totalTimeMillis - The sum amount of time consumed by all of the queries
+that prompted the recommendation.
+* avgTimeMillis - The average time each query currently takes.
 
-#### Runtime Output to STDERR
+Use these statistics to prioritize your indexing efforts.
 
-Dex provides runtime output as it processes. In default mode, Dex outputs each
-unique recommendation it generates, and concludes with run statistics. Each
-recommendation includes the following fields:
+#### Watch Mode Output to STDERR
 
-* namespace - The db.collection name.
-* index - A json string describing the recommended index.
-* shellCommand - A helpful cut-and-paste command to create the index from
-  the MongoDB shell.
+Dex provides runtime output during watch (-w) mode. Every 30 seconds,
+the full list of recommendations is printed with updated statistics.
 
-Sample: 
+Sample:                     `
 ```
 ...
 {
-    "index": "{'simpleIndexedField': 1, 'simpleUnindexedFieldThree': 1}", 
-    "namespace": "dex_test.test_collection" 
-    "shellCommand": "db.test_collection.ensureIndex({'simpleIndexedField': 1, 'simpleUnindexedFieldThree': 1}, {'background': true})"
+        "index": "{'field': 1}",
+        "queryCount": 1304,
+        "namespace": "myDb.myCollection",
+        "totalTimeMillis": 235195,
+        "avgTimeMillis": 180
 }
 ...
-Total lines read: 7
-Understood query lines: 7
-Unique recommendations: 5
-Lines impacted by recommendations: 5
 ```
 
 #### Final Output to STDOUT
 
-Dex returns a JSON document containing runtime statistics and each unique
+Dex returns an array of JSON documents containing each unique recommendation.
+
+NOTE: Dex no longer provides runtime output in default mode (no -w)
+
+#### Verbose Output
+When -v/--verbose is specified, Dex provides additional information for
+each recommendation, including:
+
+* namespace - The MongoDB namespace in which to create the index,
+in the form "db.collection"
+* queryCount - The total number of queries that will benefit from the
 recommendation.
-
-Sample:
-```
-{
-    "linesPassed": 7, 
-    "linesRecommended": 5, 
-    "results": [
-        {
-            "index-json": "{'simpleUnindexedField': 1}", 
-            "shell-command": "db.test_collection.ensureIndex({'simpleUnindexedField': 1}, {'background': true})", 
-            "namespace": "dex_test.test_collection" 
-        }, 
-       ...
-    ], 
-    "uniqueRecommendations": 5, 
-    "linesProcessed": 7
-}
-```
-
-### Verbose
-When -v/--verbose is specified, Dex outputs the full query report for each
-unique recommendation, including:
-
-* namespace - The db.collection name.
-* rawFields - Raw fields extracted from the query
-* queryAnalysis - Provides basic information about the query, such as
-  fieldCount), as well as the analyzed type of each field. 'suppported' is
-  False when the query contains an UNSUPPORTED field.
-* indexAnalysis - Shows which indexes cover the query (either in full
-  or partially), and whether or not the analysis shows room for improvement.
-  For each index, the following information is available:
-
-  idealOrder - Is the index sorted according to Dex's internal heuristic.
-
-  queryFieldsCovered - Number of query fields the index services.
-
-  coverage - Indexes with a coverage of 'none' are not output. 'partial'
-coverage indicates that (0 < query-fields-covered < total-query-fields).
-'full' coverage indicates that (query-fields-covered == total-query-fields).
-
-  supported - Indicates that the index is not of an unsupported type (such as 2d)
-
-  index - The mongodb-provided document describing the index.
-
-* parsed - The raw query as read by Dex's LogParser.
-* recommendation - The recommendation itself (as described in Default Output
-  above)
+* avgTimeMillis - The average time each query currently takes.
+* totalTimeMillis - The sum amount of time consumed by all of the queries that
+prompted the recommendation.
+* recommendation.index - The index recommended.
+* recommendation.namespace - The recommendation namespace.
+* recommendation.shellCommand - A helpful string for creating the index in
+the MongoDB shell.
+* queriesCovered - An array of unique query patterns addressed by the
+recommendation, and statistics for each.
+** queriesCovered.q - The query pattern
+** queriesCovered.s - The query's sort component, if any.
+** queriesCovered.queryCount - The total number of queries matching the query
+ pattern.
+recommendation.
+** queriesCovered.avgTimeMillis - The average time each query with the pattern
+takes.
+** queriesCovered.totalTimeMillis - The sum amount of time consumed by all of
+ the queries of that pattern.
 
 Sample:
 
 ```
+[
 ...
-{
-    "indexAnalysis": {
-        "needsRecommendation": true, 
-        "fullIndexes": [], 
-        "partialIndexes": [
+  {
+        "queriesCovered": [
             {
-                "index": {
-                    "key": [
-                        [
-                            "simpleIndexedField", 
-                            1
-                        ]
-                    ], 
-                    "v": 1
-                }, 
-                "supported": true, 
-                "coverage": "partial", 
-                "idealOrder": true, 
-                "queryFieldsCovered": 1
+                "q": {
+                    "field": "<field>"
+                },
+                "avgTimeMillis": 180,
+                "queryCount": 1304,
+                "totalTimeMillis": 235195
             }
-        ]
-    }, 
-    "parsed": {
-        "ns": "dex_test.test_collection", 
-        "query": {
-            "simpleIndexedField": "value"
-        }, 
-        "orderby": {
-            "simpleUnindexedFieldThree": -1
-        }, 
-        "findandmodify": "test_collection", 
-        "update": {
-            "$set": {
-                "something": "somethingelse"
-            }
+        ],
+        "totalTimeMillis": 235195,
+        "namespace": "myDb.myCollection",
+        "queryCount": 1304,
+        "avgTimeMillis": 180,
+        "recommendation": {
+            "index": "{'field': 1}",
+            "namespace": "myDb.myCollection",
+            "shellCommand": "db['myCollection'].ensureIndex({'field': 1},
+            {'background': true})"
         }
-    }, 
-    "recommendation": {
-        "index": "{'simpleIndexedField': 1, 'simpleUnindexedFieldThree': 1}", 
-        "namespace": "dex_test.test_collection",
-        "shellCommand": "db.test_collection.ensureIndex({'simpleIndexedField': 1, 'simpleUnindexedFieldThree': 1}, {'background': true})"
-    }, 
-    "namespace": "dex_test.test_collection",
-    "queryAnalysis": {
-        "fieldCount": 2, 
-        "supported": true, 
-        "analyzedFields": [
-            {
-                "fieldName": "simpleIndexedField", 
-                "fieldType": "EQUIV"
-            }, 
-            {
-                "fieldName": "simpleUnindexedFieldThree", 
-                "fieldType": "SORT", 
-                "seq": 0
-            }
-        ]
     }
-}
 ...
-Total lines read: 7
-Understood query lines: 7
-Unique recommendations: 5
-Lines impacted by recommendations: 5
-
+]
 ```
 
 ### Questions?

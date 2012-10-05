@@ -121,9 +121,6 @@ class Dex:
                 if recommendation is not None:
                     self._full_report.add_report(query_report)
                     out['linesRecommended'] += 1
-                    # Cache the signature to suppress duplicate output
-                    if recommendation not in self._recommendation_cache:
-                        out['uniqueRecommendations'] += 1
 
     ############################################################################
     def analyze_profile(self):
@@ -155,7 +152,7 @@ class Dex:
                                     profile_parser,
                                     out)
 
-        self._output_aggregated_report()
+        self._output_aggregated_report(sys.stdout)
 
         return 0
 
@@ -198,7 +195,6 @@ class Dex:
             +         "enable profile level 2 before running Dex.\n"
             sys.stderr.write(message)
             db.set_profiling_level(DEFAULT_PROFILE_LEVEL)
-            enabled_profile = True
 
         output_time = time.time() + WATCH_DISPLAY_REFRESH_SECONDS
         try:
@@ -207,15 +203,15 @@ class Dex:
                                     profile_parser,
                                     out)
                 if time.time() >= output_time:
-                    self._output_aggregated_report()
+                    self._output_aggregated_report(sys.stderr)
                     output_time = time.time() + WATCH_DISPLAY_REFRESH_SECONDS
         except KeyboardInterrupt:
             sys.stderr.write("Interrupt received\n")
         finally:
-            self._output_aggregated_report()
+            self._output_aggregated_report(sys.stdout)
             if initial_profile_level is pymongo.OFF:
                 message = "Dex is resetting profile level to initial value " \
-                +         "of 0. You may wish to drop the system.profile "
+                +         "of 0. You may wish to drop the system.profile " \
                 +         "collection.\n"
                 sys.stderr.write(message)
                 db.set_profiling_level(initial_profile_level)
@@ -232,7 +228,7 @@ class Dex:
         with open(logfile_path) as file:
             for line in file:
                 self._process_query(line, log_parser, out)
-        self._output_aggregated_report()
+        self._output_aggregated_report(sys.stdout)
 
         return 0
 
@@ -249,12 +245,12 @@ class Dex:
                                         WATCH_INTERVAL_SECONDS):
                 self._process_query(line, log_parser, out)
                 if time.time() >= output_time:
-                    self._output_aggregated_report()
+                    self._output_aggregated_report(sys.stderr)
                     output_time = time.time() + WATCH_DISPLAY_REFRESH_SECONDS
         except KeyboardInterrupt:
             sys.stderr.write("Interrupt received\n")
         finally:
-            self._output_aggregated_report()
+            self._output_aggregated_report(sys.stdout)
 
         return 0
 
@@ -267,13 +263,14 @@ class Dex:
                  'linesProcessed': 0,
                  'linesPassed': 0 }
 
-    def _output_aggregated_report(self):
+    ############################################################################
+    def _output_aggregated_report(self, out):
         message = None
         if self._verbose:
             message = self._full_report.get_aggregated_reports_verbose()
         else:
             message = self._full_report.get_aggregated_reports()
-        sys.stdout.write(pretty_json(message) + "\n")
+        out.write(pretty_json(message) + "\n")
 
     ############################################################################
     def _output_summary(self, out):
@@ -495,9 +492,11 @@ class QueryAnalyzer:
         for key in query_component.keys():
             if key not in sort_fields:
                 field_type = UNSUPPORTED_TYPE
-                if key not in COMPOSITE_QUERY_OPERATORS:
-                    
+                if ((key not in UNSUPPORTED_QUERY_OPERATORS) and
+                    (key not in COMPOSITE_QUERY_OPERATORS)):
                     try:
+                        if query_component[key] == {}:
+                            raise
                         nested_field_list = query_component[key].keys()      
                     except:
                         field_type = EQUIV_TYPE
@@ -510,7 +509,8 @@ class QueryAnalyzer:
                                 supported = False
                                 field_type = UNSUPPORTED_TYPE
                                 break
-                else:
+
+                if field_type is UNSUPPORTED_TYPE:
                     supported = False
                             
                 analyzed_field = {'fieldName': key,

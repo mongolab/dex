@@ -98,12 +98,12 @@ class Dex:
                                                            collection_name)
 
     ############################################################################
-    def _process_query(self, input, parser, out):
-        out['linesPassed'] += 1
+    def _process_query(self, input, parser, run_stats):
+        run_stats['linesPassed'] += 1
         raw_query = parser.parse(input)
 
         if raw_query is not None:
-            out['linesProcessed'] += 1
+            run_stats['linesProcessed'] += 1
             namespace_tuple = self._tuplefy_namespace(raw_query['ns'])
             # If the query is for a requested namespace ....
             if self._namespace_requested(raw_query['ns']):
@@ -120,12 +120,12 @@ class Dex:
                 recommendation = query_report['recommendation']
                 if recommendation is not None:
                     self._full_report.add_report(query_report)
-                    out['linesRecommended'] += 1
+                    run_stats['linesRecommended'] += 1
 
     ############################################################################
     def analyze_profile(self):
         """Analyzes queries from a given log file"""
-        out = self._get_initial_output()
+        run_stats = self._get_initial_run_stats()
         profile_parser = ProfileParser()
         databases = self._get_requested_databases()
         connection = pymongo.Connection(self._db_uri)
@@ -150,16 +150,16 @@ class Dex:
             for profile_entry in profile_entries:
                 self._process_query(profile_entry,
                                     profile_parser,
-                                    out)
+                                    run_stats)
 
-        self._output_aggregated_report(sys.stdout)
+        self._output_aggregated_report(sys.stdout, run_stats)
 
         return 0
 
     ############################################################################
     def watch_profile(self):
         """Analyzes queries from a given log file"""
-        out = self._get_initial_output()
+        run_stats = self._get_initial_run_stats()
         profile_parser = ProfileParser()
         databases = self._get_requested_databases()
         connection = pymongo.Connection(self._db_uri)
@@ -201,14 +201,14 @@ class Dex:
             for profile_entry in self._tail_profile(db, WATCH_INTERVAL_SECONDS):
                 self._process_query(profile_entry,
                                     profile_parser,
-                                    out)
+                                    run_stats)
                 if time.time() >= output_time:
-                    self._output_aggregated_report(sys.stderr)
+                    self._output_aggregated_report(sys.stderr, run_stats)
                     output_time = time.time() + WATCH_DISPLAY_REFRESH_SECONDS
         except KeyboardInterrupt:
             sys.stderr.write("Interrupt received\n")
         finally:
-            self._output_aggregated_report(sys.stdout)
+            self._output_aggregated_report(sys.stdout, run_stats)
             if initial_profile_level is pymongo.OFF:
                 message = "Dex is resetting profile level to initial value " \
                 +         "of 0. You may wish to drop the system.profile " \
@@ -221,21 +221,21 @@ class Dex:
     ############################################################################
     def analyze_logfile(self, logfile_path):
         """Analyzes queries from a given log file"""
-        out = self._get_initial_output()
+        run_stats = self._get_initial_run_stats()
         log_parser = LogParser()
 
         # For each line in the logfile ... 
         with open(logfile_path) as file:
             for line in file:
-                self._process_query(line, log_parser, out)
-        self._output_aggregated_report(sys.stdout)
+                self._process_query(line, log_parser, run_stats)
+        self._output_aggregated_report(sys.stdout, run_stats)
 
         return 0
 
     ############################################################################
     def watch_logfile(self, logfile_path):
         """Analyzes queries from the tail of a given log file"""
-        out = self._get_initial_output()
+        run_stats = self._get_initial_run_stats()
         log_parser = LogParser()
 
         # For each new line in the logfile ...
@@ -243,44 +243,34 @@ class Dex:
         try:
             for line in self._tail_file(open(logfile_path),
                                         WATCH_INTERVAL_SECONDS):
-                self._process_query(line, log_parser, out)
+                self._process_query(line, log_parser, run_stats)
                 if time.time() >= output_time:
-                    self._output_aggregated_report(sys.stderr)
+                    self._output_aggregated_report(sys.stderr, run_stats)
                     output_time = time.time() + WATCH_DISPLAY_REFRESH_SECONDS
         except KeyboardInterrupt:
             sys.stderr.write("Interrupt received\n")
         finally:
-            self._output_aggregated_report(sys.stdout)
+            self._output_aggregated_report(sys.stdout, run_stats)
 
         return 0
 
     ############################################################################
-    def _get_initial_output(self):
+    def _get_initial_run_stats(self):
         """Singlesource for initializing an output dict"""
-        return { 'results': [],
-                 'linesRecommended': 0,
-                 'uniqueRecommendations': 0,
+        return { 'linesRecommended': 0,
                  'linesProcessed': 0,
                  'linesPassed': 0 }
 
     ############################################################################
-    def _output_aggregated_report(self, out):
-        message = None
+    def _output_aggregated_report(self, out, run_stats):
         if self._verbose:
-            message = self._full_report.get_aggregated_reports_verbose()
+            results = self._full_report.get_aggregated_reports_verbose()
         else:
-            message = self._full_report.get_aggregated_reports()
-        out.write(pretty_json(message) + "\n")
+            results = self._full_report.get_aggregated_reports()
 
-    ############################################################################
-    def _output_summary(self, out):
-        """Outputs summary statistics"""
-        sys.stderr.write('Total entries read: %i\n' % (out['linesPassed']))
-        sys.stderr.write('Understood entries: %i\n' % (out['linesProcessed']))
-        sys.stderr.write('Unique recommendations: %i\n' % (out['uniqueRecommendations']))
-        sys.stderr.write('Entries impacted by recommendations: %i\n' % (out['linesRecommended']))
-        sys.stdout.write(pretty_json(out))
-        sys.stdout.write("\n")
+        output = { 'results': results,
+                   'runStats': run_stats }
+        out.write(pretty_json(output) + "\n")
 
     ############################################################################
     def _tail_file(self, file, interval):

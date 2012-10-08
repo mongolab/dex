@@ -25,7 +25,7 @@
 import unittest
 import pymongo
 import yaml
-import json
+import sys
 from dex import dex
 import os
 
@@ -305,7 +305,54 @@ class test_dex(unittest.TestCase):
         self.assertEqual(report['queryFieldsCovered'], 2)
         self.assertEqual(report['index'], index)
         self.assertEqual(report['coverage'], 'full')
-        self.assertTrue(report['idealOrder'])   
-     
+        self.assertTrue(report['idealOrder'])
+
+    def test_report_aggregation(self):
+        test_dex = dex.Dex(TEST_URI, True, [])
+        report = test_dex._full_report._reports
+
+        test_query = "{ query: { simpleUnindexedField: null }, " \
+                     "ns: 'dex_test.test_collection', 'millis': 150}"
+        result = test_dex.analyze_query(None,
+                                        yaml.load(test_query),
+                                        TEST_DBNAME,
+                                        TEST_COLLECTION)
+        test_dex._full_report.add_report(result)
+        self.assertEqual(len(report), 1)
+        self.assertEqual(report[0]['queryCount'], 1)
+        self.assertEqual(len(report[0]['queriesCovered']), 1)
+
+        test_query = "{ query: {}, orderby: { simpleUnindexedField: null }," \
+                     "ns: 'dex_test.test_collection', 'millis': 50}"
+        result = test_dex.analyze_query(None,
+                                        yaml.load(test_query),
+                                        TEST_DBNAME,
+                                        TEST_COLLECTION)
+        test_dex._full_report.add_report(result)
+
+        self.assertEqual(len(report), 1)
+        self.assertEqual(report[0]['queryCount'], 2)
+        self.assertEqual(len(report[0]['queriesCovered']), 2)
+        totalAvg = report[0]['avgTimeMillis']
+        self.assertEqual(totalAvg, 100)
+
+        test_query = "{ query: { anotherUnindexedField: null }, "\
+                     "ns: 'dex_test.test_collection', 'millis': 100}"
+        result = test_dex.analyze_query(None,
+                                        yaml.load(test_query),
+                                        TEST_DBNAME,
+                                        TEST_COLLECTION)
+        #adding twice for a double query
+        test_dex._full_report.add_report(result)
+        test_dex._full_report.add_report(result)
+
+        self.assertEqual(len(report), 2)
+        self.assertEqual(report[0]['queryCount'], 2)
+        self.assertEqual(len(report[0]['queriesCovered']), 2)
+        self.assertEqual(report[1]['queryCount'], 2)
+        self.assertEqual(len(report[1]['queriesCovered']), 1)
+        totalAvg = report[0]['avgTimeMillis']
+        self.assertEqual(totalAvg, 100)
+
     if __name__ == '__main__':
         unittest.main()

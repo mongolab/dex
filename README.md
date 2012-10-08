@@ -172,22 +172,37 @@ that prompted the recommendation.
 
 Use these statistics to prioritize your indexing efforts.
 
+For each run, Dex also provides a brief set of run stats:
+* linesPassed - The number of entries (log or profile) sent to Dex.
+* linesProcessed - The number of entries from which Dex successfully
+extracted queries.
+* linesRecommended - The number of lines that prompted an index recommendation.
+
 #### Watch Mode Output to STDERR
 
 Dex provides runtime output during watch (-w) mode. Every 30 seconds,
 the full list of recommendations is printed with updated statistics.
 
-Sample:                     `
+Default Output Sample:                     `
 ```
-...
 {
-        "index": "{'field': 1}",
-        "queryCount": 1304,
-        "namespace": "myDb.myCollection",
-        "totalTimeMillis": 235195,
-        "avgTimeMillis": 180
+    "runStats": {
+        "linesRecommended": 27677,
+        "linesProcessed": 27677,
+        "linesPassed": 28954
+    },
+    "results": [
+        ...
+        {
+            "index": "{'classes': 1, 'name': 1, 'level': 1}",
+            "queryCount": 13837,
+            "namespace": "mongoquest.adventurers",
+            "totalTimeMillis": 3315793,
+            "avgTimeMillis": 239
+        },
+        ...
+    ]
 }
-...
 ```
 
 #### Final Output to STDOUT
@@ -223,36 +238,56 @@ takes.
  * queriesCovered.totalTimeMillis - The sum amount of time consumed by all of
  the queries of that pattern.
 
-Sample:
-
+Verbose Sample:                     `
 ```
-[
-...
-  {
-        "queriesCovered": [
-            {
-                "q": {
-                    "field": "<field>"
+{
+    "runStats": {
+        "linesRecommended": 27677,
+        "linesProcessed": 27677,
+        "linesPassed": 28954
+    },
+    "results": [
+        ...
+        {
+            "queriesCovered": [
+                {
+                    "q": {
+                        "classes": "<classes>",
+                        "name": "<name>",
+                        "level": "<level>"
+                    },
+                    "avgTimeMillis": 210,
+                    "queryCount": 6919,
+                    "totalTimeMillis": 1454932
                 },
-                "avgTimeMillis": 180,
-                "queryCount": 1304,
-                "totalTimeMillis": 235195
+                {
+                    "q": {
+                        "classes": "<classes>",
+                        "name": "<name>"
+                    },
+                    "avgTimeMillis": 268,
+                    "s": {
+                        "level": "<level>"
+                    },
+                    "queryCount": 6918,
+                    "totalTimeMillis": 1860861
+                }
+            ],
+            "totalTimeMillis": 3315793,
+            "namespace": "mongoquest.adventurers",
+            "queryCount": 13837,
+            "avgTimeMillis": 239,
+            "recommendation": {
+                "index": "{'classes': 1, 'name': 1, 'level': 1}",
+                "namespace": "mongoquest.adventurers",
+                "shellCommand": "db['adventurers'].ensureIndex({'classes': 1, 'name': 1, 'level': 1}, {'background': true})"
             }
-        ],
-        "totalTimeMillis": 235195,
-        "namespace": "myDb.myCollection",
-        "queryCount": 1304,
-        "avgTimeMillis": 180,
-        "recommendation": {
-            "index": "{'field': 1}",
-            "namespace": "myDb.myCollection",
-            "shellCommand": "db['myCollection'].ensureIndex({'field': 1},
-            {'background': true})"
-        }
-    }
-...
-]
+        },
+        ...
+    ]
+}
 ```
+
 
 ### Questions?
 

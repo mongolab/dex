@@ -427,14 +427,8 @@ class QueryAnalyzer:
                 'namespace': namespace,
                 'queryAnalysis': query_analysis,
                 'indexAnalysis': index_analysis,
-                'recommendation': recommendation }  
-    
-    ############################################################################
-    def _mask_query(self, parsed_query):
-        return parsed_query
-    #for key in query['query'].keys():
-                    #   query['query'][key] = '<' + key '>'
-    
+                'recommendation': recommendation }
+
     ############################################################################
     def _ensure_index_cache(self, db_uri, db_name, collection_name):
         """Adds a collections index entries to the cache if not present"""

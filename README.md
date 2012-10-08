@@ -161,7 +161,7 @@ Output
 ### Default
 Dex provides information and statistics for each unique recommendation. A
 recommendation includes:
-* Index - The index recommended.
+* index - The index recommended.
 * queryCount - The total number of queries that will benefit from the
 recommendation.
 * namespace - The MongoDB namespace in which to create the index,
@@ -183,7 +183,7 @@ extracted queries.
 Dex provides runtime output during watch (-w) mode. Every 30 seconds,
 the full list of recommendations is printed with updated statistics.
 
-Default Output Sample:                     `
+Default Output Sample:
 ```
 {
     "runStats": {
@@ -229,7 +229,7 @@ prompted the recommendation.
 the MongoDB shell.
 * queriesCovered - An array of unique query patterns addressed by the
 recommendation, and statistics for each.
- * queriesCovered.q - The query pattern
+ * queriesCovered.q - The query pattern, with values replaced by a mask.
  * queriesCovered.s - The query's sort component, if any.
  * queriesCovered.queryCount - The total number of queries matching the query
  pattern.
@@ -238,7 +238,7 @@ takes.
  * queriesCovered.totalTimeMillis - The sum amount of time consumed by all of
  the queries of that pattern.
 
-Verbose Sample:                     `
+Verbose Sample:
 ```
 {
     "runStats": {

@@ -16,6 +16,7 @@ index, if one is not found. Dex recommends partially-ordered indexes according
 to a rule of thumb:
 
 Your index field order should first answer:
+
 1) Equivalent value checks
 2) Sort clauses
 3) Range value checks ($in, $nin, $lt/gt, $lte/gte, etc.)
@@ -229,13 +230,13 @@ prompted the recommendation.
 the MongoDB shell.
 * queriesCovered - An array of unique query patterns addressed by the
 recommendation, and statistics for each.
- * queriesCovered.q - The query pattern, with values replaced by a mask.
- * queriesCovered.s - The query's sort component, if any.
- * queriesCovered.queryCount - The total number of queries matching the query
+ * queryMask - The query pattern, with values masked (q for query component,
+ s for sort component)
+ * queryCount - The total number of queries matching the query
  pattern.
- * queriesCovered.avgTimeMillis - The average time each query with the pattern
+ * avgTimeMillis - The average time each query with the pattern
 takes.
- * queriesCovered.totalTimeMillis - The sum amount of time consumed by all of
+ * totalTimeMillis - The sum amount of time consumed by all of
  the queries of that pattern.
 
 Verbose Sample:
@@ -251,24 +252,14 @@ Verbose Sample:
         {
             "queriesCovered": [
                 {
-                    "q": {
-                        "classes": "<classes>",
-                        "name": "<name>",
-                        "level": "<level>"
-                    },
+                    "queryMask": "{'q': {'classes': '<classes>' , 'name': '<name>' , 'level': '<level>' }}",
                     "avgTimeMillis": 210,
                     "queryCount": 6919,
                     "totalTimeMillis": 1454932
                 },
                 {
-                    "q": {
-                        "classes": "<classes>",
-                        "name": "<name>"
-                    },
+                    "queryMask": "{'q': {'classes': '<classes>', 'name': '<name>' }, 's': {'level': <sort-order>}}",
                     "avgTimeMillis": 268,
-                    "s": {
-                        "level": "<level>"
-                    },
                     "queryCount": 6918,
                     "totalTimeMillis": 1860861
                 }

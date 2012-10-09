@@ -403,7 +403,7 @@ class QueryAnalyzer:
         """Generates a comprehensive report on the raw query"""
         index_analysis = None
         recommendation = None
-        parsed_query = self._mask_query(raw_query)
+        parsed_query = raw_query
         namespace = raw_query['ns']
 
         index_cache_entry = self._ensure_index_cache(db_uri,
@@ -868,14 +868,8 @@ class ReportAggregation:
         """Returns the query in report that matches queryAnalysis"""
         mask = self._get_query_mask(queryAnalysis)
         for query in report['queriesCovered']:
-            if mask['q'] == query['q']:
-                if mask.has_key('s'):
-                    if query.has_key('s'):
-                        if query['s'] == mask['s']:
-                            return query
-                else:
-                    if not query.has_key('s'):
-                        return query
+            if mask == query['queryMask']:
+                return query
         return None
 
     ############################################################################
@@ -914,10 +908,10 @@ class ReportAggregation:
     def _get_initial_query(self, report):
         """Returns a new query query document from the report"""
         initial_millis = int(report['parsed']['millis'])
-        query = self._get_query_mask(report['queryAnalysis'])
-        query['totalTimeMillis'] = initial_millis
-        query['queryCount'] = 1
-        query['avgTimeMillis'] = initial_millis
+        query = { 'queryMask' : self._get_query_mask(report['queryAnalysis']),
+                  'totalTimeMillis': initial_millis,
+                  'queryCount' : 1,
+                  'avgTimeMillis': initial_millis }
         return query
 
     ############################################################################
@@ -932,15 +926,30 @@ class ReportAggregation:
     ############################################################################
     def _get_query_mask(self, queryAnalysis):
         """Converts a queryAnalysis to a query mask"""
-        q = {}
-        s = {}
-        mask = { 'q': q }
+        qmask = "'q': {"
+        smask = "'s': {"
+        qfirst = True
+        sfirst = True
         for field in queryAnalysis['analyzedFields']:
             if field['fieldType'] is not SORT_TYPE:
-                q[field['fieldName']] = '<' + field['fieldName'] + '>'
+                if qfirst:
+                    qmask += "'" + field['fieldName'] + "': "
+                    qfirst = False
+                else:
+                    qmask += ", '" + field['fieldName'] + "': "
+                qmask += "'<" + field['fieldName'] + ">' "
+
             else:
-                s[field['fieldName']] = '<' + field['fieldName'] + '>'
-        mask = { 'q': q }
-        if len(s.keys()) is not 0:
-            mask['s'] = s
-        return mask
+                if sfirst:
+                    smask += "'" + field['fieldName'] + "': "
+                    sfirst = False
+                else:
+                    smask += ", '" + field['fieldName'] + "': "
+                smask += "<sort-order>"
+
+        if sfirst:
+            return "{" + qmask + "}}"
+        else:
+            return "{" + qmask + "}, " + smask + "}}"
+
+

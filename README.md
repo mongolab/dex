@@ -17,9 +17,9 @@ to a rule of thumb:
 
 Your index field order should first answer:
 
-1) Equivalent value checks
-2) Sort clauses
-3) Range value checks ($in, $nin, $lt/gt, $lte/gte, etc.)
+1. Equivalent value checks
+2. Sort clauses
+3. Range value checks ($in, $nin, $lt/gt, $lte/gte, etc.)
 
 Note that your data cardinality may warrant a different order than the suggested
 indexes.

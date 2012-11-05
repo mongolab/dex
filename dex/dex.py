@@ -31,7 +31,10 @@ import re
 import yaml
 import yaml.constructor
 from bson import json_util
-from collections import OrderedDict
+try:
+    from collections import OrderedDict
+except ImportError:
+    from ordereddict import OrderedDict
 
 ################################################################################
 # Configuration

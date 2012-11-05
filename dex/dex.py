@@ -34,7 +34,7 @@ from bson import json_util
 try:
     from collections import OrderedDict
 except ImportError:
-    from OrderedDict import OrderedDict
+    from ordereddict import OrderedDict
 
 ################################################################################
 # Configuration

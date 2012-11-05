@@ -23,14 +23,15 @@
 ################################################################################
 
 import pymongo
-import os
+from pymongo.son_manipulator import SONManipulator
 import time
-import datetime
 import sys
 import json
 import re
 import yaml
+import yaml.constructor
 from bson import json_util
+from collections import OrderedDict
 
 ################################################################################
 # Configuration
@@ -128,7 +129,7 @@ class Dex:
         run_stats = self._get_initial_run_stats()
         profile_parser = ProfileParser()
         databases = self._get_requested_databases()
-        connection = pymongo.Connection(self._db_uri)
+        connection = pymongo.Connection(self._db_uri,document_class=OrderedDict)
 
         if databases == []:
             try:
@@ -145,7 +146,10 @@ class Dex:
                     databases.remove(ignore_db)
 
         for database in databases:
-            profile_entries = connection[database]['system.profile'].find()
+
+            db = connection[database]
+
+            profile_entries = db['system.profile'].find()
 
             for profile_entry in profile_entries:
                 self._process_query(profile_entry,
@@ -162,7 +166,7 @@ class Dex:
         run_stats = self._get_initial_run_stats()
         profile_parser = ProfileParser()
         databases = self._get_requested_databases()
-        connection = pymongo.Connection(self._db_uri)
+        connection = pymongo.Connection(self._db_uri,document_class=OrderedDict)
         enabled_profile = False
 
         if databases == []:
@@ -257,9 +261,11 @@ class Dex:
     ############################################################################
     def _get_initial_run_stats(self):
         """Singlesource for initializing an output dict"""
-        return { 'linesRecommended': 0,
-                 'linesProcessed': 0,
-                 'linesPassed': 0 }
+        return OrderedDict({
+            'linesRecommended': 0,
+            'linesProcessed': 0,
+            'linesPassed': 0
+        })
 
     ############################################################################
     def _output_aggregated_report(self, out, run_stats):
@@ -423,11 +429,13 @@ class QueryAnalyzer:
                                                                collection_name)
 
         # QUERY REPORT
-        return {'parsed': parsed_query,
-                'namespace': namespace,
-                'queryAnalysis': query_analysis,
-                'indexAnalysis': index_analysis,
-                'recommendation': recommendation }
+        return OrderedDict({
+            'parsed': parsed_query,
+            'namespace': namespace,
+            'queryAnalysis': query_analysis,
+            'indexAnalysis': index_analysis,
+            'recommendation': recommendation
+        })
 
     ############################################################################
     def _ensure_index_cache(self, db_uri, db_name, collection_name):
@@ -439,7 +447,8 @@ class QueryAnalyzer:
         if collection_name not in self._internal_map[db_name]:
             indexes = []
             try:
-                connection = pymongo.Connection(db_uri)
+                connection = pymongo.Connection(db_uri,
+                                                document_class=OrderedDict)
                 db = connection[db_name]
                 indexes = db[collection_name].index_information()
             except:
@@ -503,9 +512,11 @@ class QueryAnalyzer:
                 field_count += 1
 
         # QUERY ANALYSIS
-        return {'analyzedFields': analyzed_fields,
-                'fieldCount': field_count,
-                'supported': supported}
+        return OrderedDict({
+            'analyzedFields': analyzed_fields,
+            'fieldCount': field_count,
+            'supported': supported
+        })
     
     ############################################################################
     def _generate_index_analysis(self, query_analysis, indexes):
@@ -529,9 +540,11 @@ class QueryAnalyzer:
                         partial_indexes.append(index_report)
 
         # INDEX ANALYSIS
-        return {'fullIndexes': full_indexes,
-                'partialIndexes': partial_indexes,
-                'needsRecommendation': needs_recommendation }
+        return OrderedDict({
+            'fullIndexes': full_indexes,
+            'partialIndexes': partial_indexes,
+            'needsRecommendation': needs_recommendation
+        })
 
     ############################################################################
     def _generate_index_report(self, index, query_analysis):
@@ -587,11 +600,13 @@ class QueryAnalyzer:
             coverage = 'full'
         
         # INDEX REPORT
-        return {'coverage': coverage,
-                'idealOrder': ideal_order,
-                'queryFieldsCovered': query_fields_covered,
-                'index': index,
-                'supported': supported}
+        return OrderedDict({
+            'coverage': coverage,
+            'idealOrder': ideal_order,
+            'queryFieldsCovered': query_fields_covered,
+            'index': index,
+            'supported': supported
+        })
                         
     ############################################################################
     def _generate_recommendation(self,
@@ -622,9 +637,11 @@ class QueryAnalyzer:
         command_string += '{\'background\': ' + BACKGROUND_FLAG + '})'
 
         # RECOMMENDATION
-        return {'namespace': db_name + '.' + collection_name,
-                'index': index_json,
-                'shellCommand': command_string }
+        return OrderedDict({
+            'namespace': db_name + '.' + collection_name,
+            'index': index_json,
+            'shellCommand': command_string
+        })
                 
     ############################################################################
     def get_cache(self):
@@ -671,7 +688,7 @@ class ProfileParser(Parser):
     class ProfileEntryHandler:
         ########################################################################
         def handle(self, input):
-            raw_query = {}
+            raw_query = OrderedDict({})
             if ((input is not None) and
                 (input.has_key('op'))):
                 if input['op'] == 'insert':
@@ -680,7 +697,8 @@ class ProfileParser(Parser):
                     if input['query'].has_key('$query'):
                         raw_query['query'] = input['query']['$query']
                         if input['query'].has_key('$orderby'):
-                            raw_query['orderby'] = input['query']['$orderby']
+                            orderby = input['query']['$orderby']
+                            raw_query['orderby'] = orderby
                     else:
                         raw_query['query'] = input['query']
                     raw_query['millis'] = input['millis']
@@ -690,7 +708,8 @@ class ProfileParser(Parser):
                     raw_query['query'] = input['query']
                     if input.has_key('updateobj'):
                         if input['updateobj'].has_key('orderby'):
-                            raw_query['orderby'] = input['updateobj']['orderby']
+                            orderby = input['updateobj']['orderby']
+                            raw_query['orderby'] = orderby
                     raw_query['millis'] = input['millis']
                     raw_query['ns'] = input['ns']
                     return raw_query
@@ -725,7 +744,7 @@ class LogParser(Parser):
     class QueryLineHandler:
         ########################################################################
         def _yamlfy_query(self, extracted_query):
-            temp_query = yaml.load(extracted_query)
+            temp_query = yaml.load(extracted_query, OrderedDictYAMLLoader)
             if temp_query is not None:
                 if temp_query.has_key('query'):
                     return temp_query
@@ -895,33 +914,38 @@ class ReportAggregation:
     ############################################################################
     def _get_initial_report(self, report):
         """Returns a new aggregated report document"""
-        return {
+        return OrderedDict({
             'queriesCovered' : [ self._get_initial_query(report)],
             'totalTimeMillis' : int(report['parsed']['millis']),
             'avgTimeMillis' : int(report['parsed']['millis']),
             'queryCount' : 1,
             'recommendation' : report['recommendation'],
             'namespace' : report['namespace']
-        }
+        })
 
     ############################################################################
     def _get_initial_query(self, report):
         """Returns a new query query document from the report"""
         initial_millis = int(report['parsed']['millis'])
-        query = { 'queryMask' : self._get_query_mask(report['queryAnalysis']),
-                  'totalTimeMillis': initial_millis,
-                  'queryCount' : 1,
-                  'avgTimeMillis': initial_millis }
-        return query
+        mask = self._get_query_mask(report['queryAnalysis'])
+        return OrderedDict({
+            'queryMask' : mask,
+            'totalTimeMillis': initial_millis,
+            'queryCount' : 1,
+            'avgTimeMillis': initial_millis
+        })
+
 
     ############################################################################
     def _get_abbreviated_report(self, report):
         """Returns a minimum of fields from the report"""
-        return { 'namespace' : report['namespace'],
-                 'index' : report['recommendation']['index'],
-                 'avgTimeMillis' : report['avgTimeMillis'],
-                 'queryCount': report['queryCount'],
-                 'totalTimeMillis': report['totalTimeMillis']}
+        return OrderedDict({
+            'namespace' : report['namespace'],
+            'index' : report['recommendation']['index'],
+            'avgTimeMillis' : report['avgTimeMillis'],
+            'queryCount': report['queryCount'],
+            'totalTimeMillis': report['totalTimeMillis']
+        })
 
     ############################################################################
     def _get_query_mask(self, queryAnalysis):
@@ -952,4 +976,39 @@ class ReportAggregation:
         else:
             return "{" + qmask + "}, " + smask + "}}"
 
+# From https://gist.github.com/844388
+class OrderedDictYAMLLoader(yaml.Loader):
+    """
+    A YAML loader that loads mappings into ordered dictionaries.
+    """
 
+    def __init__(self, *args, **kwargs):
+        yaml.Loader.__init__(self, *args, **kwargs)
+
+        self.add_constructor(u'tag:yaml.org,2002:map', type(self).construct_yaml_map)
+        self.add_constructor(u'tag:yaml.org,2002:omap', type(self).construct_yaml_map)
+
+    def construct_yaml_map(self, node):
+        data = OrderedDict()
+        yield data
+        value = self.construct_mapping(node)
+        data.update(value)
+
+    def construct_mapping(self, node, deep=False):
+        if isinstance(node, yaml.MappingNode):
+            self.flatten_mapping(node)
+        else:
+            raise yaml.constructor.ConstructorError(None, None,
+                'expected a mapping node, but found %s' % node.id, node.start_mark)
+
+        mapping = OrderedDict()
+        for key_node, value_node in node.value:
+            key = self.construct_object(key_node, deep=deep)
+            try:
+                hash(key)
+            except TypeError, exc:
+                raise yaml.constructor.ConstructorError('while constructing a mapping',
+                    node.start_mark, 'found unacceptable key (%s)' % exc, key_node.start_mark)
+            value = self.construct_object(value_node, deep=deep)
+            mapping[key] = value
+        return mapping

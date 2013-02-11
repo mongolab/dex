@@ -240,6 +240,19 @@ class Dex:
         return 0
 
     ############################################################################
+    def analyze_logfile_object(self, file_object):
+        """Analyzes queries from a given log file"""
+        run_stats = self._get_initial_run_stats()
+        log_parser = LogParser()
+
+        # For each line in the logfile ...
+        for line in file_object:
+                self._process_query(line, log_parser, run_stats)
+        self._output_aggregated_report(sys.stdout, run_stats)
+
+        return 0
+
+    ############################################################################
     def watch_logfile(self, logfile_path):
         """Analyzes queries from the tail of a given log file"""
         run_stats = self._get_initial_run_stats()

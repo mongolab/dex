@@ -777,7 +777,7 @@ class LogParser(Parser):
         ########################################################################
         def __init__(self):
             self.name = 'Standard Query Log Line Handler'
-            self._regex = '.{20}\[conn(?P<connection_id>\d+)\] '
+            self._regex = '.*\[conn(?P<connection_id>\d+)\] '
             self._regex += '(?P<operation>\S+) (?P<ns>\S+\.\S+) query: '
             self._regex += '(?P<query>\{.*\}) (?P<options>(\S+ )*)'
             self._regex += '(?P<query_time>\d+)ms'
@@ -807,7 +807,7 @@ class LogParser(Parser):
         ########################################################################
         def __init__(self):
             self.name = 'CMD Log Line Handler'
-            self._regex = '.{20}\[conn(?P<connection_id>\d+)\] '
+            self._regex = '.*\[conn(?P<connection_id>\d+)\] '
             self._regex += 'command (?P<db>\S+)\.\$cmd command: '
             self._regex += '(?P<query>\{.*\}) (?P<options>(\S+ )*)'
             self._regex += '(?P<query_time>\d+)ms'
@@ -842,7 +842,7 @@ class LogParser(Parser):
         ########################################################################
         def __init__(self):
             self.name = 'Update Log Line Handler'
-            self._regex = '.{20}\[conn(?P<connection_id>\d+)\] '
+            self._regex = '.*\[conn(?P<connection_id>\d+)\] '
             self._regex += 'update (?P<ns>\S+\.\S+) query: '
             self._regex += '(?P<query>\{.*\}) update: (?P<update>\{.*\}) '
             self._regex += '(?P<options>(\S+ )*)(?P<query_time>\d+)ms'

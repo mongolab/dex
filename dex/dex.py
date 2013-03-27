@@ -30,6 +30,7 @@ import json
 import re
 import yaml
 import yaml.constructor
+from datetime import datetime
 from bson import json_util
 try:
     from collections import OrderedDict
@@ -682,6 +683,7 @@ class Parser(object):
             try:
                 query = handler.handle(input)
             except:
+                raise
                 query = None
             finally:
                 if query is not None:
@@ -777,7 +779,8 @@ class LogParser(Parser):
         ########################################################################
         def __init__(self):
             self.name = 'Standard Query Log Line Handler'
-            self._regex = '.*\[conn(?P<connection_id>\d+)\] '
+            #self._regex = '(?P<ts>[a-zA-Z]{3} [a-zA-Z]{3} {1,2}\d+ \d{2}:\d{2}:\d{2})'
+            self._regex = '.*\[(?P<connection>\S*)\] '
             self._regex += '(?P<operation>\S+) (?P<ns>\S+\.\S+) query: '
             self._regex += '(?P<query>\{.*\}) (?P<options>(\S+ )*)'
             self._regex += '(?P<query_time>\d+)ms'
@@ -789,6 +792,7 @@ class LogParser(Parser):
             if match is not None:
                 query = self._yamlfy_query(match.group('query'))
                 if query is not None:
+                    #query['time'] = datetime.strptime(match.group('ts'), "%a %b %d %H:%M:%S")
                     query['millis'] = match.group('query_time')
                     query['ns'] =  match.group('ns')
                     if query["query"].has_key("$orderby"):
@@ -902,7 +906,7 @@ class ReportAggregation:
     def _get_existing_query(self, report, queryAnalysis):
         """Returns the query in report that matches queryAnalysis"""
         mask = self._get_query_mask(queryAnalysis)
-        for query in report['queriesCovered']:
+        for query in report['queryDetails']:
             if mask == query['queryMask']:
                 return query
         return None
@@ -916,11 +920,12 @@ class ReportAggregation:
         if current_sig is not None:
             current_sig['totalTimeMillis'] += query_millis
             current_sig['queryCount'] += 1
-            current_sig['avgTimeMillis'] = current_sig['totalTimeMillis'] / \
-                                           current_sig['queryCount']
+            current_sig['avgTimeMillis'] = current_sig['totalTimeMillis'] / current_sig['queryCount']
 
         else:
-            target['queriesCovered'].append(self._get_initial_query(new))
+            initial_query_detail = self._get_initial_query_detail(new)
+            target['queryDetails'].append(initial_query_detail)
+            target['queriesCovered'].append(initial_query_detail['queryMask'])
 
         target['totalTimeMillis'] += query_millis
         target['queryCount'] += 1
@@ -930,8 +935,10 @@ class ReportAggregation:
     ############################################################################
     def _get_initial_report(self, report):
         """Returns a new aggregated report document"""
+        initial_query_detail = self._get_initial_query_detail(report)
         return OrderedDict({
-            'queriesCovered' : [ self._get_initial_query(report)],
+            'queryDetails' : [ initial_query_detail ],
+            'queriesCovered' : [ initial_query_detail['queryMask'] ],
             'totalTimeMillis' : int(report['parsed']['millis']),
             'avgTimeMillis' : int(report['parsed']['millis']),
             'queryCount' : 1,
@@ -940,7 +947,7 @@ class ReportAggregation:
         })
 
     ############################################################################
-    def _get_initial_query(self, report):
+    def _get_initial_query_detail(self, report):
         """Returns a new query query document from the report"""
         initial_millis = int(report['parsed']['millis'])
         mask = self._get_query_mask(report['queryAnalysis'])
@@ -960,7 +967,8 @@ class ReportAggregation:
             'index' : report['recommendation']['index'],
             'avgTimeMillis' : report['avgTimeMillis'],
             'queryCount': report['queryCount'],
-            'totalTimeMillis': report['totalTimeMillis']
+            'totalTimeMillis': report['totalTimeMillis'],
+            'queriesCovered': report['queriesCovered']
         })
 
     ############################################################################

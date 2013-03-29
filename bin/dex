@@ -27,11 +27,9 @@
 import dargparse
 import sys
 import traceback
-import datetime
 from dex import dex
 
 from dargparse import dargparse
-from datetime import  datetime
 
 PARSER_DEFINITION ={
     "prog": "dex",

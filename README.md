@@ -199,7 +199,8 @@ Default Output Sample:
             "queryCount": 13837,
             "namespace": "mongoquest.adventurers",
             "totalTimeMillis": 3315793,
-            "avgTimeMillis": 239
+            "avgTimeMillis": 239,
+            "queriesCovered": [ {'q': {'classes': '<classes>' , 'name': '<name>' , 'level': '<level>' }} ]
         },
         ...
     ]
@@ -250,7 +251,7 @@ Verbose Sample:
     "results": [
         ...
         {
-            "queriesCovered": [
+            "queryDetails": [
                 {
                     "queryMask": "{'q': {'classes': '<classes>' , 'name': '<name>' , 'level': '<level>' }}",
                     "avgTimeMillis": 210,
@@ -272,7 +273,9 @@ Verbose Sample:
                 "index": "{'classes': 1, 'name': 1, 'level': 1}",
                 "namespace": "mongoquest.adventurers",
                 "shellCommand": "db['adventurers'].ensureIndex({'classes': 1, 'name': 1, 'level': 1}, {'background': true})"
-            }
+            },
+            "queriesCovered": [ "{'q': {'classes': '<classes>' , 'name': '<name>' , 'level': '<level>' }}",
+                                "{'q': {'classes': '<classes>', 'name': '<name>' }, 's': {'level': <sort-order>}}" ]
         },
         ...
     ]

@@ -30,7 +30,6 @@ import json
 import re
 import yaml
 import yaml.constructor
-from datetime import datetime
 from bson import json_util
 try:
     from collections import OrderedDict

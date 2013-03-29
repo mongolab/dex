@@ -682,7 +682,6 @@ class Parser(object):
             try:
                 query = handler.handle(input)
             except:
-                raise
                 query = None
             finally:
                 if query is not None:

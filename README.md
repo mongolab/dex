@@ -170,8 +170,8 @@ in the form "db.collection"
 * totalTimeMillis - The sum amount of time consumed by all of the queries
 that prompted the recommendation.
 * avgTimeMillis - The average time each query currently takes.
-
-Use these statistics to prioritize your indexing efforts.
+* queriesCovered - An array of query patterns addressed by the recommendation,
+with values masked (q for query component, s for sort component).
 
 For each run, Dex also provides a brief set of run stats:
 * linesPassed - The number of entries (log or profile) sent to Dex.
@@ -229,8 +229,9 @@ prompted the recommendation.
  * recommendation.namespace - The recommendation namespace.
  * recommendation.shellCommand - A helpful string for creating the index in
 the MongoDB shell.
-* queriesCovered - An array of unique query patterns addressed by the
-recommendation, and statistics for each.
+* queriesCovered - An array of query patterns addressed by the recommendation,
+with values masked (q for query component, s for sort component).
+* queryDetails - An array of statistics for each unique query pattern (see queriesCovered)
  * queryMask - The query pattern, with values masked (q for query component,
  s for sort component)
  * queryCount - The total number of queries matching the query

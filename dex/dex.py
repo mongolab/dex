@@ -24,6 +24,7 @@
 
 import pymongo
 from pymongo.son_manipulator import SONManipulator
+import sys
 import time
 import sys
 import json
@@ -361,6 +362,10 @@ class Dex:
                     warning += ' will be ignored\n'
                     sys.stderr.write(warning)
                 else:
+                    if not isinstance(namespace_tuple[0], unicode):
+                        namespace_tuple[0] = unicode(namespace_tuple[0])
+                    if not isinstance(namespace_tuple[1], unicode):
+                        namespace_tuple[1] = unicode(namespace_tuple[0])
                     if namespace_tuple not in output_namespaces:
                         output_namespaces.append(namespace_tuple)
                     else:
@@ -386,15 +391,18 @@ class Dex:
     ############################################################################
     def _tuple_requested(self, namespace_tuple):
         """Helper for _namespace_requested. Supports limited wildcards"""
+        encoded_db = unicode(namespace_tuple[0])
+        encoded_coll = unicode(namespace_tuple[1])
+
         if namespace_tuple is None:
             return False
         elif len(self._requested_namespaces) is 0:
             return True
         for requested_namespace in self._requested_namespaces:
-            if (((requested_namespace[0] is '*') or
-                 (requested_namespace[0].encode('utf-8') == namespace_tuple[0].encode('utf-8'))) and
-                ((requested_namespace[1] is '*') or
-                 (requested_namespace[1].encode('utf-8') == namespace_tuple[1].encode('utf-8')))):
+            if (((encoded_db is u"*") or
+                 (encoded_db == namespace_tuple[0])) and
+                ((encoded_coll is u"*") or
+                 (encoded_coll == namespace_tuple[1]))):
                 return True
         return False
 

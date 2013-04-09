@@ -8,3 +8,4 @@ dist
 *.ipr
 *.iml
 *.iws
+build

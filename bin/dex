@@ -42,7 +42,7 @@ PARSER_DEFINITION ={
     "args": [
              {
              "name": "uri",
-             "type" : "positional",
+             "type": "positional",
              "help": "database connection URI, including database path, and "
                      "authentication if required. If authentication is is "
                      "enabled and multiple databases need to be dexed, "
@@ -117,6 +117,20 @@ PARSER_DEFINITION ={
              "default": []
              },
              {
+                 "name": "slowms",
+                 "type" : "optional",
+                 "help": "Minimum query execution time for analysis, in milliseconds. "
+                         "Analogous to MongoDB's SLOW_MS value. Queries that "
+                         "complete in fewer milliseconds than this value will "
+                         "will not be analyzed. Default is 0.",
+                 "cmd_arg": [
+                     "-s",
+                     "--slowms"
+                 ],
+                 "nargs": 1,
+                 "default": 0
+             },
+             {
              "name": "verbose",
              "type" : "optional",
              "help": "enables provision of additional output information, "
@@ -136,7 +150,6 @@ PARSER_DEFINITION ={
 }
 
 
-
 ###############################################################################
 # MAIN
 ###############################################################################
@@ -148,7 +161,7 @@ def main(args):
     options = darg_parser.parse_args(args)
     namespaces = options.namespaces
 
-    md = dex.Dex(options.uri, options.verbose, namespaces)
+    md = dex.Dex(options.uri, options.verbose, namespaces, options.slowms)
 
     if options.use_profile:
         if options.uri is None:

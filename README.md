@@ -136,7 +136,7 @@ Options:
                         --actual regexes are not supported. Note that -n '*'
                         is equivalent to not providing a -n argument.
   -s SLOWMS, --slowms SLOWMS
-                        Minimum query execution time for analysis, in
+                        minimum query execution time for analysis, in
                         milliseconds. Analogous to MongoDB's SLOW_MS value.
                         Queries that complete in fewer milliseconds than this
                         value will will not be analyzed. Default is 0.

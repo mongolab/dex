@@ -119,7 +119,7 @@ PARSER_DEFINITION ={
              {
                  "name": "slowms",
                  "type" : "optional",
-                 "help": "Minimum query execution time for analysis, in milliseconds. "
+                 "help": "minimum query execution time for analysis, in milliseconds. "
                          "Analogous to MongoDB's SLOW_MS value. Queries that "
                          "complete in fewer milliseconds than this value will "
                          "will not be analyzed. Default is 0.",

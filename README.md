@@ -48,8 +48,8 @@ Note: Because Dex is chiefly concerned with un-indexed queries, Dex output shoul
 be affected by the additional data produced by profiling level 2. However, Dex may
 take longer to run.
 
-### Filtered
-Dex also supports filtering this analysis by specific collections and databases.
+### Filter by db/collection
+Dex supports filtering the analysis by specific collections and databases.
 Note that when you intend to analyze multiple databases you must provide a
 connection URI for the admin database.
 
@@ -59,6 +59,17 @@ connection URI for the admin database.
 > dex -p -n "*.collectionOne" mongodb://myUser:myPass@myHost:12345/admin
 
 > dex -f my/mongod/data/path/mongodb.log -n "myFirstDb.*" -n "mySecondDb.*" mongodb://myUser:myPass@myHost:12345/admin
+```
+
+### Filter by query time (millis)
+Dex also supports filtering the analysis by query execution time. Provide the
+-s/--slowms argument to specity the minimum time in millis. Queries completing
+in less than the indicated time will not be analyzed.
+
+```
+> dex -f my/mongod/data/path/mongodb.log -s 400
+
+> dex -p -n "*.collectionOne" mongodb://myUser:myPass@myHost:12345/admin --slowms 1000
 ```
 
 ### Watch Mode
@@ -124,6 +135,11 @@ Options:
                         but also supported. An asterisk is shorthand for 'all'
                         --actual regexes are not supported. Note that -n '*'
                         is equivalent to not providing a -n argument.
+  -s SLOWMS, --slowms SLOWMS
+                        Minimum query execution time for analysis, in
+                        milliseconds. Analogous to MongoDB's SLOW_MS value.
+                        Queries that complete in fewer milliseconds than this
+                        value will will not be analyzed. Default is 0.
   -v, --verbose         enables provision of additional output information,
                         including Dex's query and index analysis structures.
 ```

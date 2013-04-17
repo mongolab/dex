@@ -73,7 +73,7 @@ class test_dex(unittest.TestCase):
         pass
    
     def test_analyze_query(self):
-        test_dex = dex.Dex(TEST_URI, False, [], 0)
+        test_dex = dex.Dex(TEST_URI, False, [], 0, True)
         
         test_query = "{ query: { simpleUnindexedField: null }, ns: 'dex_test.test_collection'}"
         result = test_dex.analyze_query(TEST_URI,
@@ -203,7 +203,7 @@ class test_dex(unittest.TestCase):
         self.assertEqual(result['recommendation'], None)
                 
     def test_generate_query_analysis(self):
-        analyzer = dex.Dex(TEST_URI, False, [], 0)._query_analyzer
+        analyzer = dex.Dex(TEST_URI, False, [], 0, True)._query_analyzer
 
         analysis = analyzer._generate_query_analysis(yaml.load('{query: { a: null }}', dex.OrderedDictYAMLLoader), 'db', 'collection')
         self.assertEqual(analysis['fieldCount'], 1)
@@ -239,7 +239,7 @@ class test_dex(unittest.TestCase):
         self.assertEqual(analysis['analyzedFields'][3]['fieldType'], 'UNSUPPORTED')
                 
     def test_generate_index_report(self):
-        analyzer = dex.Dex(TEST_URI, False, [], 0)._query_analyzer
+        analyzer = dex.Dex(TEST_URI, False, [], 0, True)._query_analyzer
 
         index = {"key": [ ("complexIndexedFieldOne", -1), ("complexIndexedFieldTwo", -1)],
                  "v": 1}
@@ -308,7 +308,7 @@ class test_dex(unittest.TestCase):
         self.assertTrue(report['idealOrder'])
 
     def test_sort_ordering(self):
-        test_dex = dex.Dex(TEST_URI, True, [], 0)
+        test_dex = dex.Dex(TEST_URI, True, [], 0, True)
         report = test_dex._full_report._reports
         test_query = "{ query: {}, orderby: { simpleUnindexedField: null," \
                      "simpleUnindexedFieldTwo: null  },"\
@@ -331,7 +331,7 @@ class test_dex(unittest.TestCase):
             "{'simpleUnindexedFieldTwo': 1, 'simpleUnindexedFieldOne': 1}")
 
     def test_report_aggregation(self):
-        test_dex = dex.Dex(TEST_URI, True, [], 0)
+        test_dex = dex.Dex(TEST_URI, True, [], 0, True)
         report = test_dex._full_report._reports
 
         test_query = "{ query: { simpleUnindexedField: null }, " \

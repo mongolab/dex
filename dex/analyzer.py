@@ -33,8 +33,9 @@ BACKGROUND_FLAG = 'true'
 #   to databases to populate cache.
 ################################################################################
 class QueryAnalyzer:
-    def __init__(self):
+    def __init__(self, check_indexes):
         self._internal_map = {}
+        self._check_indexes = check_indexes
 
     ############################################################################
     def _generate_query_report(self, db_uri, raw_query, db_name, collection_name):
@@ -72,8 +73,8 @@ class QueryAnalyzer:
     ############################################################################
     def _ensure_index_cache(self, db_uri, db_name, collection_name):
         """Adds a collections index entries to the cache if not present"""
-        if db_uri is None:
-            return {'indexes' : None}
+        if not self._check_indexes or db_uri is None:
+            return {'indexes': None}
         if db_name not in self.get_cache():
             self._internal_map[db_name] = {}
         if collection_name not in self._internal_map[db_name]:

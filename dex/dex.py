@@ -56,8 +56,9 @@ DEFAULT_PROFILE_LEVEL = pymongo.SLOW_ONLY
 class Dex:
     
     ############################################################################
-    def __init__(self, db_uri, verbose, namespaces_list, slowms):
-        self._query_analyzer = QueryAnalyzer()
+    def __init__(self, db_uri, verbose, namespaces_list, slowms, check_indexes):
+        self._check_indexes = check_indexes
+        self._query_analyzer = QueryAnalyzer(check_indexes)
         self._db_uri = db_uri
         self._slowms = slowms
         self._verbose = verbose
@@ -145,7 +146,7 @@ class Dex:
         run_stats = self._get_initial_run_stats()
         profile_parser = ProfileParser()
         databases = self._get_requested_databases()
-        connection = pymongo.Connection(self._db_uri,document_class=OrderedDict)
+        connection = pymongo.MongoClient(self._db_uri,document_class=OrderedDict)
         enabled_profile = False
 
         if databases == []:

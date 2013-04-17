@@ -131,6 +131,19 @@ PARSER_DEFINITION ={
                  "default": 0
              },
              {
+                 "name": "nocheck",
+                 "type" : "optional",
+                 "help": "if provided, Dex will recommend indexes without checking"
+                         "the specified database to see if they exist. This means"
+                         "Dex may recommend an index that's already been created",
+                 "cmd_arg": [
+                     "--nocheck"
+                 ],
+                 "action": "store_true",
+                 "nargs": 0,
+                 "default": False
+             },
+             {
              "name": "verbose",
              "type" : "optional",
              "help": "enables provision of additional output information, "
@@ -161,7 +174,11 @@ def main(args):
     options = darg_parser.parse_args(args)
     namespaces = options.namespaces
 
-    md = dex.Dex(options.uri, options.verbose, namespaces, options.slowms)
+    check = True
+    if options.nocheck:
+        check = False
+
+    md = dex.Dex(options.uri, options.verbose, namespaces, options.slowms, check)
 
     if options.use_profile:
         if options.uri is None:

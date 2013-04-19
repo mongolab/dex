@@ -401,4 +401,4 @@ class Dex:
 ################################################################################
 def pretty_json(obj):
     # Inverts string quotes.
-    return json.dumps(obj, indent=4, default=json_util.default).replace('"', "'").replace("\\'", '"')
+    return json.dumps(obj, indent=4, default=json_util.default)

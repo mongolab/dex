@@ -261,14 +261,18 @@ class Dex:
         })
 
     ############################################################################
-    def _output_aggregated_report(self, out, run_stats):
+    def _make_aggregated_report(self, run_stats):
         if self._verbose:
             results = self._full_report.get_aggregated_reports_verbose()
         else:
             results = self._full_report.get_aggregated_reports()
         from operator import itemgetter
-        output = {'results': sorted(results, key=itemgetter('totalTimeMillis'), reverse=True),
-                  'runStats': run_stats }
+        return {'results': sorted(results, key=itemgetter('totalTimeMillis'), reverse=True),
+                'runStats': run_stats}
+
+    ############################################################################
+    def _output_aggregated_report(self, out, run_stats):
+        output = self._make_aggregated_report(run_stats)
         out.write(pretty_json(output) + "\n")
 
     ############################################################################

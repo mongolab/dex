@@ -131,6 +131,17 @@ PARSER_DEFINITION ={
                  "default": 0
              },
              {
+                 "name": "timeout",
+                 "type" : "optional",
+                 "help": "Maximum Dex time in minutes.",
+                 "cmd_arg": [
+                     "-t",
+                     "--timeout"
+                 ],
+                 "nargs": 1,
+                 "default": 0
+             },
+             {
                  "name": "nocheck",
                  "type" : "optional",
                  "help": "if provided, Dex will recommend indexes without checking"
@@ -173,12 +184,13 @@ def main(args):
     # parse the command line
     options = darg_parser.parse_args(args)
     namespaces = options.namespaces
+    timeout = options.timeout
 
     check = True
     if options.nocheck:
         check = False
 
-    md = dex.Dex(options.uri, options.verbose, namespaces, options.slowms, check)
+    md = dex.Dex(options.uri, options.verbose, namespaces, options.slowms, check, timeout)
 
     if options.use_profile:
         if options.uri is None:

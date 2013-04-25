@@ -29,6 +29,7 @@ import json
 from bson import json_util
 from analyzer import QueryAnalyzer, ReportAggregation
 from parser import LogParser, ProfileParser
+from datetime import datetime
 try:
     from collections import OrderedDict
 except ImportError:
@@ -56,7 +57,7 @@ DEFAULT_PROFILE_LEVEL = pymongo.SLOW_ONLY
 class Dex:
     
     ############################################################################
-    def __init__(self, db_uri, verbose, namespaces_list, slowms, check_indexes):
+    def __init__(self, db_uri, verbose, namespaces_list, slowms, check_indexes, timeout):
         self._check_indexes = check_indexes
         self._query_analyzer = QueryAnalyzer(check_indexes)
         self._db_uri = db_uri
@@ -65,6 +66,9 @@ class Dex:
         self._requested_namespaces = self._validate_namespaces(namespaces_list)
         self._recommendation_cache = []
         self._full_report = ReportAggregation()
+        self._start_time = None
+        self._timeout_time = None
+        self._timeout = timeout
 
 
     ############################################################################
@@ -222,9 +226,17 @@ class Dex:
         run_stats = self._get_initial_run_stats()
         log_parser = LogParser()
 
+        if self._start_time is None:
+            self._start_time = datetime.now()
+            self._end_time = self._start_time + datetime.timedelta(minutes=self._timeout)
+
         # For each line in the logfile ...
         for line in file_object:
-                self._process_query(line, log_parser, run_stats)
+            if datetime.now() > self._end_time:
+                run_stats['timedOut'] = True
+                run_stats['timeoutInMinutes'] = self._timeout
+                break
+            self._process_query(line, log_parser, run_stats)
         self._output_aggregated_report(sys.stdout, run_stats)
 
         return 0

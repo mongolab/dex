@@ -22,7 +22,7 @@ class Parser(object):
         for handler in self._line_handlers:
             try:
                 query = handler.handle(input)
-            except:
+            except Exception as e:
                 query = None
             finally:
                 if query is not None:
@@ -246,12 +246,15 @@ def parse_line_stats(stat_string):
     line_stats = {}
 
     split = stat_string.split(" ")
-
+    
     for stat in split:
         if stat is not "" and stat is not None and stat is not "locks(micros)":
             stat_split = stat.split(":")
-            if len(stat_split) is 2:
-                line_stats[stat_split[0]] = int(stat_split[1])
+            if (stat_split is not None) and (stat_split is not "") and (len(stat_split) is 2):
+                try:
+                    line_stats[stat_split[0]] = int(stat_split[1])
+                except:
+                    pass
 
     return line_stats
 

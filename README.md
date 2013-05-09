@@ -103,13 +103,12 @@ the duration of its operation.
 
 ### Other useful options
 
--t/--timeout - Useful to truncate a Dex operation after a number of minutes.
-If your database is generating extraordinarily large logfiles, you may only need
-to dex for 1-3 minutes to obtain usable information.
+-t/--timeout - Logfile (-f) mode only. Useful to truncate a Dex operation after
+a number of minutes. If your database is generating extraordinarily large logfiles,
+you may only need to dex for 1-3 minutes to obtain usable information.
 
 --nocheck - Don't check existing indexes in the database. This means Dex will
 recommend indexes for all queries, even indexed ones.
-
 
 ### Help Contents
 

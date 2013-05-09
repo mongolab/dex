@@ -1,9 +1,12 @@
 Future
 -------
 
-* Aggregation Framework
-*
-
+* Aggregation Framework, Geospatial, Map/Reduce
+* min/max/average nscanned and nreturned
+* scanAndOrder true/false
+* Renovation of internals
+* Test revision
+* Setwise optimization (group non-unique queries into fewer index recommendations)
 
 Version 0.5.5
 -------

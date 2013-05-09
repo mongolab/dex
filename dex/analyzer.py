@@ -1,5 +1,6 @@
 __author__ = 'eric'
 
+import sys
 import pymongo
 try:
     from collections import OrderedDict

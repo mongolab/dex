@@ -347,7 +347,7 @@ class ReportAggregation:
         else:
             initial_query_detail = self._get_initial_query_detail(new)
             target['queryDetails'].append(initial_query_detail)
-            target['queriesCovered'].append(initial_query_detail['queryMask'])
+            target['queries'].append(initial_query_detail['queryMask'])
 
         target['totalTimeMillis'] += query_millis
         target['queryCount'] += 1
@@ -361,7 +361,7 @@ class ReportAggregation:
         initial_query_detail = self._get_initial_query_detail(report)
         return OrderedDict({
             'queryDetails': [initial_query_detail],
-            'queriesCovered': [initial_query_detail['queryMask']],
+            'queries': [initial_query_detail['queryMask']],
             'totalTimeMillis': int(report['parsed']['millis']),
             'avgTimeMillis': int(report['parsed']['millis']),
             'queryCount': 1,
@@ -391,7 +391,7 @@ class ReportAggregation:
             'avgTimeMillis' : report['avgTimeMillis'],
             'queryCount': report['queryCount'],
             'totalTimeMillis': report['totalTimeMillis'],
-            'queriesCovered': report['queriesCovered']
+            'queries': report['queries']
         })
 
     ############################################################################

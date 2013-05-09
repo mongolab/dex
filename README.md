@@ -101,15 +101,26 @@ For Example:
 In addition, if profiling is not enabled, Dex will enable profile level 1 for
 the duration of its operation.
 
+### Other useful options
+
+-t/--timeout - Useful to truncate a Dex operation after a number of minutes.
+If your database is generating extraordinarily large logfiles, you may only need
+to dex for 1-3 minutes to obtain usable information.
+
+--nocheck - Don't check existing indexes in the database. This means Dex will
+recommend indexes for all queries, even indexed ones.
+
+
 ### Help Contents
 
 ```
-Usage: dex [<options>] uri
+usage: dex [uri] (-f <logfile_path> | -p) [<options>]
 
-Scans a provided MongoDB log file or profile collection and uses the provided
-URI to compare queries found in the logfile or profile collection to the indexes
-available in the database, recommending indexes for those queries which are not
-indexed. Recommended for MongoDB version 2.2.0 or later.
+Scans a provided MongoDB log file or profile collection and uses the provided URI
+to compare queries found in the logfile or profile collection to the indexes available
+in the database, recommending indexes for those queries which are not indexed.
+Recommended for MongoDB version 2.2.0 or later.
+
 
 Options:
   -h, --help            show this help message and exit
@@ -140,6 +151,13 @@ Options:
                         milliseconds. Analogous to MongoDB's SLOW_MS value.
                         Queries that complete in fewer milliseconds than this
                         value will will not be analyzed. Default is 0.
+  -t TIMEOUT, --timeout TIMEOUT
+                        Maximum Dex time in minutes. Default is 0 (no
+                        timeout).Applies to logfile (-f) mode only.
+  --nocheck             if provided, Dex will recommend indexes without
+                        checkingthe specified database to see if they exist.
+                        This meansDex may recommend an index that's already
+                        been created
   -v, --verbose         enables provision of additional output information,
                         including Dex's query and index analysis structures.
 ```
@@ -186,7 +204,7 @@ in the form "db.collection"
 * totalTimeMillis - The sum amount of time consumed by all of the queries
 that prompted the recommendation.
 * avgTimeMillis - The average time each query currently takes.
-* queriesCovered - An array of query patterns addressed by the recommendation,
+* queries - An array of query patterns addressed by the recommendation,
 with values masked (q for query component, s for sort component).
 
 For each run, Dex also provides a brief set of run stats:
@@ -194,6 +212,8 @@ For each run, Dex also provides a brief set of run stats:
 * linesProcessed - The number of entries from which Dex successfully
 extracted queries.
 * linesRecommended - The number of lines that prompted an index recommendation.
+* timedOut - True if the Dex operation times out per the -t/--timeout flag.
+* timeoutInMinutes - If timedOut is true, this contains the time.
 
 #### Watch Mode Output to STDERR
 
@@ -203,22 +223,42 @@ the full list of recommendations is printed with updated statistics.
 Default Output Sample:
 ```
 {
-    "runStats": {
-        "linesRecommended": 27677,
-        "linesProcessed": 27677,
-        "linesPassed": 28954
+    'runStats': {
+        'linesRecommended': 6482,
+        'linesProcessed': 6482,
+        'linesPassed': 6759
     },
-    "results": [
-        ...
+    'results': [
         {
-            "index": "{'classes': 1, 'name': 1, 'level': 1}",
-            "queryCount": 13837,
-            "namespace": "mongoquest.adventurers",
-            "totalTimeMillis": 3315793,
-            "avgTimeMillis": 239,
-            "queriesCovered": [ {'q': {'classes': '<classes>' , 'name': '<name>' , 'level': '<level>' }} ]
+            'index': '{"classes": 1, "name": 1, "level": 1}',
+            'totalTimeMillis': 441459,
+            'namespace': 'mongoquest.adventurers',
+            'queryCount': 2161,
+            'avgTimeMillis': 204,
+            'queries': [
+                '{"q": {"classes": "<classes>", "name": "<name>", "level": "<level>"}}'
+            ]
         },
-        ...
+        {
+            'index': '{"name": 1, "classes": 1, "level": 1}',
+            'totalTimeMillis': 441324,
+            'namespace': 'mongoquest.adventurers',
+            'queryCount': 2160,
+            'avgTimeMillis': 204,
+            'queries': [
+                '{"q": {"name": "<name>"}, "s": {"classes": "<sort-order>", "level": "<sort-order>"}}'
+            ]
+        },
+        {
+            'index': '{"name": 1}',
+            'totalTimeMillis': 410041,
+            'namespace': 'mongoquest.adventurers',
+            'queryCount': 2161,
+            'avgTimeMillis': 189,
+            'queries': [
+                '{"q": {"name": "<name>"}}'
+            ]
+        }
     ]
 }
 ```
@@ -245,9 +285,9 @@ prompted the recommendation.
  * recommendation.namespace - The recommendation namespace.
  * recommendation.shellCommand - A helpful string for creating the index in
 the MongoDB shell.
-* queriesCovered - An array of query patterns addressed by the recommendation,
+* queries - An array of query patterns addressed by the recommendation,
 with values masked (q for query component, s for sort component).
-* queryDetails - An array of statistics for each unique query pattern (see queriesCovered)
+* queryDetails - An array of statistics for each unique query pattern (see queries)
  * queryMask - The query pattern, with values masked (q for query component,
  s for sort component)
  * queryCount - The total number of queries matching the query
@@ -260,41 +300,78 @@ takes.
 Verbose Sample:
 ```
 {
-    "runStats": {
-        "linesRecommended": 27677,
-        "linesProcessed": 27677,
-        "linesPassed": 28954
+    'runStats': {
+        'linesRecommended': 6482,
+        'linesProcessed': 6482,
+        'linesPassed': 6761
     },
-    "results": [
-        ...
+    'results': [
         {
-            "queryDetails": [
-                {
-                    "queryMask": "{'q': {'classes': '<classes>' , 'name': '<name>' , 'level': '<level>' }}",
-                    "avgTimeMillis": 210,
-                    "queryCount": 6919,
-                    "totalTimeMillis": 1454932
-                },
-                {
-                    "queryMask": "{'q': {'classes': '<classes>', 'name': '<name>' }, 's': {'level': <sort-order>}}",
-                    "avgTimeMillis": 268,
-                    "queryCount": 6918,
-                    "totalTimeMillis": 1860861
-                }
+            'totalTimeMillis': 441459,
+            'queries': [
+                '{"q": {"classes": "<classes>", "name": "<name>", "level": "<level>"}}'
             ],
-            "totalTimeMillis": 3315793,
-            "namespace": "mongoquest.adventurers",
-            "queryCount": 13837,
-            "avgTimeMillis": 239,
-            "recommendation": {
-                "index": "{'classes': 1, 'name': 1, 'level': 1}",
-                "namespace": "mongoquest.adventurers",
-                "shellCommand": "db['adventurers'].ensureIndex({'classes': 1, 'name': 1, 'level': 1}, {'background': true})"
+            'namespace': 'mongoquest.adventurers',
+            'queryCount': 2161,
+            'avgTimeMillis': 204,
+            'recommendation': {
+                'index': '{"classes": 1, "name": 1, "level": 1}',
+                'namespace': 'mongoquest.adventurers',
+                'shellCommand': 'db["adventurers"].ensureIndex({"classes": 1, "name": 1, "level": 1}, {"background": true})'
             },
-            "queriesCovered": [ "{'q': {'classes': '<classes>' , 'name': '<name>' , 'level': '<level>' }}",
-                                "{'q': {'classes': '<classes>', 'name': '<name>' }, 's': {'level': <sort-order>}}" ]
+            'queryDetails': [
+                {
+                    'avgTimeMillis': 204,
+                    'queryCount': 2161,
+                    'totalTimeMillis': 441459,
+                    'queryMask': '{"q": {"classes": "<classes>", "name": "<name>", "level": "<level>"}}'
+                }
+            ]
         },
-        ...
+        {
+            'totalTimeMillis': 441324,
+            'queries': [
+                '{"q": {"name": "<name>"}, "s": {"classes": "<sort-order>", "level": "<sort-order>"}}'
+            ],
+            'namespace': 'mongoquest.adventurers',
+            'queryCount': 2160,
+            'avgTimeMillis': 204,
+            'recommendation': {
+                'index': '{"name": 1, "classes": 1, "level": 1}',
+                'namespace': 'mongoquest.adventurers',
+                'shellCommand': 'db["adventurers"].ensureIndex({"name": 1, "classes": 1, "level": 1}, {"background": true})'
+            },
+            'queryDetails': [
+                {
+                    'avgTimeMillis': 204,
+                    'queryCount': 2160,
+                    'totalTimeMillis': 441324,
+                    'queryMask': '{"q": {"name": "<name>"}, "s": {"classes": "<sort-order>", "level": "<sort-order>"}}'
+                }
+            ]
+        },
+        {
+            'totalTimeMillis': 410041,
+            'queries': [
+                '{"q": {"name": "<name>"}}'
+            ],
+            'namespace': 'mongoquest.adventurers',
+            'queryCount': 2161,
+            'avgTimeMillis': 189,
+            'recommendation': {
+                'index': '{"name": 1}',
+                'namespace': 'mongoquest.adventurers',
+                'shellCommand': 'db["adventurers"].ensureIndex({"name": 1}, {"background": true})'
+            },
+            'queryDetails': [
+                {
+                    'avgTimeMillis': 189,
+                    'queryCount': 2161,
+                    'totalTimeMillis': 410041,
+                    'queryMask': '{"q": {"name": "<name>"}}'
+                }
+            ]
+        }
     ]
 }
 ```

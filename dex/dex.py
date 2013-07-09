@@ -93,7 +93,7 @@ class Dex:
                 db_name = namespace_tuple[0]
                 collection_name = namespace_tuple[1]
                 query_report = None
-                if raw_query['millis'] >= self._slowms:
+                if int(raw_query['millis']) >= self._slowms:
                     try:
                         query_report = self.analyze_query(self._db_uri,
                                                           raw_query,

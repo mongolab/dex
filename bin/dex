@@ -184,6 +184,7 @@ def main(args):
     # parse the command line
     options = darg_parser.parse_args(args)
     namespaces = options.namespaces
+    slowms = options.slowms
     timeout = options.timeout
 
     check = True
@@ -193,7 +194,7 @@ def main(args):
                          "therefore you may receive recommendations for indexes "
                          "that already exist. (see -h/--help for more information)\n")
 
-    md = dex.Dex(options.uri, options.verbose, namespaces, options.slowms, check, float(timeout))
+    md = dex.Dex(options.uri, options.verbose, namespaces, int(slowms), check, float(timeout))
 
     if options.use_profile:
         if options.uri is None:

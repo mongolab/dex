@@ -24,62 +24,61 @@
 # WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 ################################################################################
 
-import dargparse
+from dargparse import dargparse
 import sys
 import traceback
 from dex import dex
 
-from dargparse import dargparse
-
 PARSER_DEFINITION ={
     "prog": "dex",
-    "description" : "Scans a provided MongoDB log file or profile collection "
+    "usage": "usage: dex [uri] (-f <logfile_path> | -p) [<options>]",
+    "description": "Scans a provided MongoDB log file or profile collection "
                     "and uses the provided URI to compare queries found in "
                     "the logfile or profile collection to the indexes "
                     "available in the database, recommending indexes for those "
                     "queries which are not indexed. Recommended for MongoDB "
                     "version 2.2.0 or later.",
     "args": [
-             {
-             "name": "uri",
-             "type": "positional",
-             "help": "database connection URI, including database path, and "
-                     "authentication if required. If authentication is is "
-                     "enabled and multiple databases need to be dexed, "
-                     "this URI should point to the admin database. Required "
-                     "for profile (-p) mode. Optional for logfile (-f) mode. "
-                     "If absent, Dex does not verify its logfile analysis "
-                     "against the database and recommends indexes for ALL "
-                     "queries.",
-             "nargs": "?"
-             },
-             {
-             "name": "logfile_path",
-             "type" : "optional",
-             "help": "path to a MongoDB log file. If provided, "
-                     "the file will be searched for queries.",
-             "cmd_arg": [
-                         "-f",
-                         "--file"
-                         ],
-             "nargs": 1,
-             "default": None
-             },
-             {
-             "name": "use_profile",
-             "type" : "optional",
-             "help": "flag to examine the MongoDB system.profile collection. "
-                     "If set, the profile collection will be searched for "
-                     "queries. URI is required for profile mode.",
-             "cmd_arg": [
-                         "-p",
-                         "--profile"
-                         ],
-             "action": "store_true",
-             "nargs": 0,
-             "default": False
-             },
-            {
+        {
+            "name": "uri",
+            "type": "positional",
+            "help": "database connection URI, including database path, and "
+                    "authentication if required. If authentication is is "
+                    "enabled and multiple databases need to be dexed, "
+                    "this URI should point to the admin database. Required "
+                    "for profile (-p) mode. Optional for logfile (-f) mode. "
+                    "If absent, Dex does not verify its logfile analysis "
+                    "against the database and recommends indexes for ALL "
+                    "queries.",
+            "nargs": "?"
+        },
+        {
+            "name": "logfile_path",
+            "type" : "optional",
+            "help": "path to a MongoDB log file. If provided, "
+                    "the file will be searched for queries.",
+            "cmd_arg": [
+                "-f",
+                "--file"
+            ],
+            "nargs": 1,
+            "default": None
+        },
+        {
+            "name": "use_profile",
+            "type" : "optional",
+            "help": "flag to examine the MongoDB system.profile collection. "
+                    "If set, the profile collection will be searched for "
+                    "queries. URI is required for profile mode.",
+            "cmd_arg": [
+                "-p",
+                "--profile"
+            ],
+            "action": "store_true",
+            "nargs": 0,
+            "default": False
+        },
+        {
             "name": "watch",
             "type" : "optional",
             "help": "instructs Dex to watch the system.profile or log "
@@ -96,79 +95,80 @@ PARSER_DEFINITION ={
             "nargs": 1,
             "action": "store_true",
             "default": False
-            },
-             {
-             "name": "namespaces",
-             "type" : "optional",
-             "help": "a MongoDB namespace (db.collection). Can be provided "
-                     "multiple times. This option creates a filter, and "
-                     "queries not in the provided namespace(s) will not be "
-                     "analyzed. Format: -n ('db.collection' | '*' | 'db.*' | "
-                     "'collection'). '*.*' and '*.collection' are redundant "
-                     "but also supported. An asterisk is shorthand for "
-                     "'all'--actual regexes are not supported. Note that "
-                     "-n '*' is equivalent to not providing a -n argument.",
-             "cmd_arg": [
-                         "-n",
-                         "--namespace"
-                         ],
-             "nargs": 1,
-             "action": "append",
-             "default": []
-             },
-             {
-                 "name": "slowms",
-                 "type" : "optional",
-                 "help": "minimum query execution time for analysis, in milliseconds. "
-                         "Analogous to MongoDB's SLOW_MS value. Queries that "
-                         "complete in fewer milliseconds than this value will "
-                         "will not be analyzed. Default is 0.",
-                 "cmd_arg": [
-                     "-s",
-                     "--slowms"
-                 ],
-                 "nargs": 1,
-                 "default": 0
-             },
-             {
-                 "name": "timeout",
-                 "type" : "optional",
-                 "help": "Maximum Dex time in minutes.",
-                 "cmd_arg": [
-                     "-t",
-                     "--timeout"
-                 ],
-                 "nargs": 1,
-                 "default": 0
-             },
-             {
-                 "name": "nocheck",
-                 "type" : "optional",
-                 "help": "if provided, Dex will recommend indexes without checking"
-                         "the specified database to see if they exist. This means"
-                         "Dex may recommend an index that's already been created",
-                 "cmd_arg": [
-                     "--nocheck"
-                 ],
-                 "action": "store_true",
-                 "nargs": 0,
-                 "default": False
-             },
-             {
-             "name": "verbose",
-             "type" : "optional",
-             "help": "enables provision of additional output information, "
-                     "including Dex's query and index analysis structures.",
-             "cmd_arg": [
-                         "-v",
-                         "--verbose"
-                         ],
-             "action": "store_true",
-             "nargs": 0,
-             "default": False
-             }
-             
-             ]
+        },
+        {
+            "name": "namespaces",
+            "type" : "optional",
+            "help": "a MongoDB namespace (db.collection). Can be provided "
+                    "multiple times. This option creates a filter, and "
+                    "queries not in the provided namespace(s) will not be "
+                    "analyzed. Format: -n ('db.collection' | '*' | 'db.*' | "
+                    "'collection'). '*.*' and '*.collection' are redundant "
+                    "but also supported. An asterisk is shorthand for "
+                    "'all'--actual regexes are not supported. Note that "
+                    "-n '*' is equivalent to not providing a -n argument.",
+            "cmd_arg": [
+                "-n",
+                "--namespace"
+            ],
+            "nargs": 1,
+            "action": "append",
+            "default": []
+        },
+        {
+            "name": "slowms",
+            "type" : "optional",
+            "help": "minimum query execution time for analysis, in milliseconds. "
+                    "Analogous to MongoDB's SLOW_MS value. Queries that "
+                    "complete in fewer milliseconds than this value will "
+                    "will not be analyzed. Default is 0.",
+            "cmd_arg": [
+                "-s",
+                "--slowms"
+            ],
+            "nargs": 1,
+            "default": 0
+        },
+        {
+            "name": "timeout",
+            "type" : "optional",
+            "help": "Maximum Dex time in minutes. Default is 0 (no timeout)."
+                    "Applies to logfile (-f) mode only.",
+            "cmd_arg": [
+                "-t",
+                "--timeout"
+            ],
+            "nargs": 1,
+            "default": 0
+        },
+        {
+            "name": "nocheck",
+            "type" : "optional",
+            "help": "if provided, Dex will recommend indexes without checking"
+                    "the specified database to see if they exist. This means"
+                    "Dex may recommend an index that's already been created",
+            "cmd_arg": [
+                "--nocheck"
+            ],
+            "action": "store_true",
+            "nargs": 0,
+            "default": False
+        },
+        {
+            "name": "verbose",
+            "type" : "optional",
+            "help": "enables provision of additional output information, "
+                    "including Dex's query and index analysis structures.",
+            "cmd_arg": [
+                "-v",
+                "--verbose"
+            ],
+            "action": "store_true",
+            "nargs": 0,
+            "default": False
+        }
+
+    ]
 
 
 }
@@ -180,7 +180,7 @@ PARSER_DEFINITION ={
 def main(args):
     # build the parse object
     darg_parser = dargparse.build_parser(PARSER_DEFINITION)
-    
+
     # parse the command line
     options = darg_parser.parse_args(args)
     namespaces = options.namespaces
@@ -189,22 +189,28 @@ def main(args):
     check = True
     if options.nocheck:
         check = False
+        sys.stderr.write("--nocheck flag provided. Existing indexes will not be checked, "
+                         "therefore you may receive recommendations for indexes "
+                         "that already exist. (see -h/--help for more information)\n")
 
-    md = dex.Dex(options.uri, options.verbose, namespaces, options.slowms, check, timeout)
+    md = dex.Dex(options.uri, options.verbose, namespaces, options.slowms, check, float(timeout))
 
     if options.use_profile:
         if options.uri is None:
-            sys.stderr.write("URI is required for profile mode.\n")
+            sys.stderr.write("URI is required for profile mode. (use -h/--help for help)\n")
             return 1
         if options.watch is False:
             return md.analyze_profile()
         else:
             return md.watch_profile()
+    elif options.logfile_path is None:
+        sys.stderr.write("Either logfile (-f <filename>) or profile (-p) mode is required (use -h/--help for help)\n")
     elif options.logfile_path is not None:
         if options.uri is None:
-            sys.stderr.write("No URI provided. Only logfile will be processed. "
-                             "You may receive recommendations for indexes "
-                             "that already exist.\n")
+            if check:
+                sys.stderr.write("No URI provided, so using --nocheck mode. Existing indexes will not be checked, "
+                                 "therefore you may receive recommendations for indexes "
+                                 "that already exist. (see -h/--help for more information)\n")
         if options.watch is False:
             return md.analyze_logfile(options.logfile_path)
         else:

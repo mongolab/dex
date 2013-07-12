@@ -30,6 +30,7 @@ from bson import json_util
 from analyzer import QueryAnalyzer, ReportAggregation
 from parser import LogParser, ProfileParser
 from datetime import datetime
+from datetime import timedelta
 try:
     from collections import OrderedDict
 except ImportError:
@@ -55,7 +56,7 @@ DEFAULT_PROFILE_LEVEL = pymongo.SLOW_ONLY
 #   query or logfile
 ################################################################################
 class Dex:
-    
+
     ############################################################################
     def __init__(self, db_uri, verbose, namespaces_list, slowms, check_indexes, timeout):
         self._check_indexes = check_indexes
@@ -119,9 +120,9 @@ class Dex:
             try:
                 databases = connection.database_names()
             except:
-                message = "Error: Could not list databases on server. Please "\
-                +         "check the auth components of your URI or provide "\
-                +         "a namespace filter with -n.\n"
+                message = "Error: Could not list databases on server. Please " \
+                          +         "check the auth components of your URI or provide " \
+                          +         "a namespace filter with -n.\n"
                 sys.stderr.write(message)
                 databases = []
 
@@ -157,8 +158,8 @@ class Dex:
             try:
                 databases = connection.database_names()
             except:
-                message = "Error: Could not list databases on server. Please "\
-                +         "check the auth components of your URI.\n"
+                message = "Error: Could not list databases on server. Please " \
+                          +         "check the auth components of your URI.\n"
                 sys.stderr.write(message)
                 databases = []
 
@@ -167,8 +168,8 @@ class Dex:
                     databases.remove(ignore_db)
 
         if len(databases) != 1:
-            message = "Error: Please use namespaces (-n) to specify a single "\
-            +         "database for profile watching.\n"
+            message = "Error: Please use namespaces (-n) to specify a single " \
+                      +         "database for profile watching.\n"
             sys.stderr.write(message)
             return 1
 
@@ -178,9 +179,9 @@ class Dex:
         initial_profile_level = db.profiling_level()
 
         if initial_profile_level is pymongo.OFF:
-            message = "Profile level currently 0. Dex is setting profile "\
-            +         "level 1. To run --watch at profile level 2, "\
-            +         "enable profile level 2 before running Dex.\n"
+            message = "Profile level currently 0. Dex is setting profile " \
+                      +         "level 1. To run --watch at profile level 2, " \
+                      +         "enable profile level 2 before running Dex.\n"
             sys.stderr.write(message)
             db.set_profiling_level(DEFAULT_PROFILE_LEVEL)
 
@@ -199,8 +200,8 @@ class Dex:
             self._output_aggregated_report(sys.stdout, run_stats)
             if initial_profile_level is pymongo.OFF:
                 message = "Dex is resetting profile level to initial value " \
-                +         "of 0. You may wish to drop the system.profile " \
-                +         "collection.\n"
+                          +         "of 0. You may wish to drop the system.profile " \
+                          +         "collection.\n"
                 sys.stderr.write(message)
                 db.set_profiling_level(initial_profile_level)
 
@@ -209,14 +210,8 @@ class Dex:
     ############################################################################
     def analyze_logfile(self, logfile_path):
         """Analyzes queries from a given log file"""
-        run_stats = self._get_initial_run_stats()
-        log_parser = LogParser()
-
-        # For each line in the logfile ... 
         with open(logfile_path) as file:
-            for line in file:
-                self._process_query(line, log_parser, run_stats)
-        self._output_aggregated_report(sys.stdout, run_stats)
+            self.analyze_logfile_object(file)
 
         return 0
 
@@ -228,11 +223,14 @@ class Dex:
 
         if self._start_time is None:
             self._start_time = datetime.now()
-            self._end_time = self._start_time + datetime.timedelta(minutes=self._timeout)
+            if self._timeout != 0:
+                self._end_time = self._start_time + timedelta(minutes=self._timeout)
+            else:
+                self._end_time = None
 
         # For each line in the logfile ...
         for line in file_object:
-            if datetime.now() > self._end_time:
+            if self._end_time is not None and datetime.now() > self._end_time:
                 run_stats['timedOut'] = True
                 run_stats['timeoutInMinutes'] = self._timeout
                 break
@@ -285,7 +283,7 @@ class Dex:
     ############################################################################
     def _output_aggregated_report(self, out, run_stats):
         output = self._make_aggregated_report(run_stats)
-        out.write(pretty_json(output) + "\n")
+        out.write(pretty_json(output).replace('"', "'").replace("\\'", '"') + "\n")
 
     ############################################################################
     def _tail_file(self, file, interval):
@@ -325,16 +323,16 @@ class Dex:
         if len(namespace_split) is 1:
             # we treat a single element as a collection name.
             # this also properly tuplefies '*'
-            namespace_tuple = ('*', namespace_split[0])            
+            namespace_tuple = ('*', namespace_split[0])
         elif len(namespace_split) is 2:
             namespace_tuple = (namespace_split[0],namespace_split[1])
         else:
-            return None                            
+            return None
         return namespace_tuple
-    
+
     ############################################################################
     # Need to add rejection of true regex attempts.
-    def _validate_namespaces(self, input_namespaces):  
+    def _validate_namespaces(self, input_namespaces):
         """Converts a list of db namespaces to a list of namespace tuples,
             supporting basic commandline wildcards"""
         output_namespaces = []
@@ -346,18 +344,16 @@ class Dex:
                 warning += 'ignored when one namespace is "*"\n'
                 sys.stderr.write(warning)
             return output_namespaces
-        else: 
+        else:
             for namespace in input_namespaces:
+                if not isinstance(namespace, unicode):
+                    namespace = unicode(namespace)
                 namespace_tuple = self._tuplefy_namespace(namespace)
                 if namespace_tuple is None:
                     warning = 'Warning: Invalid namespace ' + namespace
                     warning += ' will be ignored\n'
                     sys.stderr.write(warning)
                 else:
-                    if not isinstance(namespace_tuple[0], unicode):
-                        namespace_tuple[0] = unicode(namespace_tuple[0])
-                    if not isinstance(namespace_tuple[1], unicode):
-                        namespace_tuple[1] = unicode(namespace_tuple[0])
                     if namespace_tuple not in output_namespaces:
                         output_namespaces.append(namespace_tuple)
                     else:
@@ -365,7 +361,7 @@ class Dex:
                         warning += ' will be ignored\n'
                         sys.stderr.write(warning)
         return output_namespaces
-                                   
+
     ############################################################################                             
     def _namespace_requested(self, namespace):
         """Checks whether the requested_namespaces contain the provided
@@ -383,18 +379,24 @@ class Dex:
     ############################################################################
     def _tuple_requested(self, namespace_tuple):
         """Helper for _namespace_requested. Supports limited wildcards"""
-        encoded_db = unicode(namespace_tuple[0])
-        encoded_coll = unicode(namespace_tuple[1])
+        if not isinstance(namespace_tuple[0], unicode):
+            encoded_db = unicode(namespace_tuple[0])
+        else:
+            encoded_db = namespace_tuple[0]
+        if not isinstance(namespace_tuple[1], unicode):
+            encoded_coll = unicode(namespace_tuple[1])
+        else:
+            encoded_coll = namespace_tuple[1]
 
         if namespace_tuple is None:
             return False
         elif len(self._requested_namespaces) is 0:
             return True
         for requested_namespace in self._requested_namespaces:
-            if (((encoded_db is u"*") or
-                 (encoded_db == namespace_tuple[0])) and
-                ((encoded_coll is u"*") or
-                 (encoded_coll == namespace_tuple[1]))):
+            if  ((((requested_namespace[0]) == u'*') or
+                 (encoded_db == requested_namespace[0])) and
+                (((requested_namespace[1]) == u'*') or
+                 (encoded_coll == requested_namespace[1]))):
                 return True
         return False
 
@@ -403,7 +405,7 @@ class Dex:
         """Returns a list of databases requested, not including ignored dbs"""
         requested_databases = []
         if ((self._requested_namespaces is not None) and
-            (self._requested_namespaces != [])):
+                (self._requested_namespaces != [])):
             for requested_namespace in self._requested_namespaces:
                 if requested_namespace[0] is '*':
                     return []

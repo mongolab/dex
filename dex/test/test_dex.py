@@ -343,7 +343,7 @@ class test_dex(unittest.TestCase):
         test_dex._full_report.add_report(result)
         self.assertEqual(len(report), 1)
         self.assertEqual(report[0]['queryCount'], 1)
-        self.assertEqual(len(report[0]['queriesCovered']), 1)
+        self.assertEqual(len(report[0]['queries']), 1)
 
         test_query = "{ query: {}, orderby: { simpleUnindexedField: null }," \
                      "ns: 'dex_test.test_collection', 'millis': 50}"
@@ -355,7 +355,7 @@ class test_dex(unittest.TestCase):
 
         self.assertEqual(len(report), 1)
         self.assertEqual(report[0]['queryCount'], 2)
-        self.assertEqual(len(report[0]['queriesCovered']), 2)
+        self.assertEqual(len(report[0]['queries']), 2)
         totalAvg = report[0]['avgTimeMillis']
         self.assertEqual(totalAvg, 100)
 
@@ -371,9 +371,9 @@ class test_dex(unittest.TestCase):
 
         self.assertEqual(len(report), 2)
         self.assertEqual(report[0]['queryCount'], 2)
-        self.assertEqual(len(report[0]['queriesCovered']), 2)
+        self.assertEqual(len(report[0]['queries']), 2)
         self.assertEqual(report[1]['queryCount'], 2)
-        self.assertEqual(len(report[1]['queriesCovered']), 1)
+        self.assertEqual(len(report[1]['queries']), 1)
         totalAvg = report[0]['avgTimeMillis']
         self.assertEqual(totalAvg, 100)
 

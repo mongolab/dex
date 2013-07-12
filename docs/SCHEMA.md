@@ -8,7 +8,7 @@ Primary structure for Dex. Represents Dex's assessment of a single occurrence of
     "recommendations": [<recommendation>,...],
     "indexAnalysis": <indexAnalysis>,
     "namespace":  <string>,
-    "parsed": <parsed>,
+    "details": <details>,
     "queryAnalysis": <queryAnalysis>
 }
 ```

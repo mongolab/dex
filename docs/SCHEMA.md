@@ -123,3 +123,15 @@ Aggregated details across multiple queries, drawn from aggregating queryReport.p
     }
 }
 ```
+
+# DexResult
+```
+{
+  "runStats": {
+    "linesProcessed": <int>,
+    "linesPassed": <int>,
+    "linesRecommended": <int>
+    },
+  "results": [<aggregatedQueryReport>]
+}
+```

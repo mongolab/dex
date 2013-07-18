@@ -3,10 +3,42 @@ __author__ = 'eric'
 import re
 import yaml
 import yaml.constructor
+from utils import pretty_json, small_json
+
 try:
     from collections import OrderedDict
 except ImportError:
     from ordereddict import OrderedDict
+
+
+def mask(parsed):
+    return small_json(parsed)
+
+
+def scrub(e):
+    if isinstance(e, dict):
+        return scrub_doc(e)
+    elif isinstance(e, list):
+        return scrub_list(e)
+    else:
+        return None
+
+
+def scrub_doc(d):
+    for k in d:
+        d[k] = scrub(d[k])
+        if d[k] is None:
+            d[k] = "<" + k + ">"
+    return d
+
+
+def scrub_list(a):
+    v = []
+    for e in a:
+        e = scrub(e)
+        if e is not None:
+            v.append(scrub(e))
+    return sorted(v)
 
 ################################################################################
 # Parser
@@ -128,18 +160,24 @@ class LogParser(Parser):
         def handle(self, input):
             match = self._rx.match(input)
             if match is not None:
-                query = self._yamlfy_query(match.group('query'))
-                if query is not None:
+                parsed = self._yamlfy_query(match.group('query'))
+                result = OrderedDict()
+                if parsed is not None:
+                    parsed = scrub(parsed['query']) if 'query' in parsed else OrderedDict()
+                    result['mask'] = mask(parsed)
                     #query['time'] = datetime.strptime(match.group('ts'), "%a %b %d %H:%M:%S")
-                    query['millis'] = match.group('query_time')
-                    query['ns'] =  match.group('ns')
-                    if query["query"].has_key("$orderby"):
-                        query["orderby"] = query["query"]["$orderby"]
-                        del(query["query"]["$orderby"])
-                    if query['query'].has_key("$query"):
-                        query["query"] = query["query"]["$query"]
-                    query['stats'] = parse_line_stats(match.group('stats'))
-                return query
+                    result['millis'] = match.group('query_time')
+                    result['ns'] =  match.group('ns')
+
+                    if '$query' in parsed:
+                        result['query'] = parsed['$query']
+                        if '$orderby' in parsed:
+                            result['orderby'] = parsed['$orderby']
+                    else:
+                        result['query'] = parsed
+
+                    result['stats'] = parse_line_stats(match.group('stats'))
+                return result
             return None
 
     ############################################################################

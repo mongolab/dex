@@ -102,21 +102,22 @@ class QueryAnalyzer:
         field_count = 0
         supported = True
         sort_fields = []
+        query_mask = None
 
-        if parsed_query.has_key('orderby'):
-            sort_component = parsed_query['orderby']
-            sort_seq = 0
-            for key in sort_component.keys():
-                sort_field = {'fieldName': key,
-                              'fieldType': SORT_TYPE,
-                              'seq': sort_seq}
-                sort_fields.append(key)
-                analyzed_fields.append(sort_field)
-                field_count += 1
-                sort_seq += 1
+        #if 'orderby' in parsed_query:
+        sort_component = parsed_query['orderby'] if 'orderby' in parsed_query else []
+        sort_seq = 0
+        for key in sort_component:
+            sort_field = {'fieldName': key,
+                          'fieldType': SORT_TYPE,
+                          'seq': sort_seq}
+            sort_fields.append(key)
+            analyzed_fields.append(sort_field)
+            field_count += 1
+            sort_seq += 1
 
         query_component = parsed_query['query']
-        for key in query_component.keys():
+        for key in query_component:
             if key not in sort_fields:
                 field_type = UNSUPPORTED_TYPE
                 if ((key not in UNSUPPORTED_QUERY_OPERATORS) and
@@ -145,11 +146,14 @@ class QueryAnalyzer:
                 analyzed_fields.append(analyzed_field)
                 field_count += 1
 
+        query_mask = parsed_query['mask']
+
         # QUERY ANALYSIS
         return OrderedDict({
             'analyzedFields': analyzed_fields,
             'fieldCount': field_count,
-            'supported': supported
+            'supported': supported,
+            'queryMask': query_mask
         })
 
     ############################################################################
@@ -297,11 +301,26 @@ class ReportAggregation:
     ############################################################################
     def add_report(self, report):
         """Adds a report to the report aggregation"""
-        existing_report = self._get_existing_Report(report)
+
+        initial_query_detail = self._get_initial_query_detail(report)
+        mask = initial_query_detail['queryMask']
+
+        existing_report = self._get_existing_Report(mask, report)
+
         if existing_report is not None:
-            self._merge_report(existing_report, report)
+            if ((report['indexAnalysis'] is None) or
+                    (report['indexAnalysis']['needsRecommendation'] is True)):
+                self._merge_report(existing_report, report)
         else:
-            self._reports.append(self._get_initial_report(report))
+            self._reports.append(OrderedDict({
+                'queryDetails': [initial_query_detail],
+                'queriesCovered': [mask],
+                'totalTimeMillis': int(report['parsed']['millis']),
+                'avgTimeMillis': int(report['parsed']['millis']),
+                'queryCount': 1,
+                'recommendation': report['recommendation'],
+                'namespace': report['namespace']
+            }))
 
     ############################################################################
     def get_aggregated_reports_verbose(self):
@@ -317,20 +336,19 @@ class ReportAggregation:
         return reports
 
     ############################################################################
-    def _get_existing_Report(self, report):
+    def _get_existing_Report(self, mask, report):
         """Returns the aggregated report that matches report"""
         for existing_report in self._reports:
             if existing_report['namespace'] == report['namespace']:
-                if existing_report['recommendation'] == report['recommendation']:
+                if mask in existing_report['queriesCovered']:
                     return existing_report
         return None
 
     ############################################################################
     def _get_existing_query(self, report, queryAnalysis):
         """Returns the query in report that matches queryAnalysis"""
-        mask = self._get_query_mask(queryAnalysis)
         for query in report['queryDetails']:
-            if mask == query['queryMask']:
+            if queryAnalysis['queryMask'] == query['queryMask']:
                 return query
         return None
 
@@ -348,78 +366,31 @@ class ReportAggregation:
         else:
             initial_query_detail = self._get_initial_query_detail(new)
             target['queryDetails'].append(initial_query_detail)
-            target['queries'].append(initial_query_detail['queryMask'])
+            target['queriesCovered'].append(initial_query_detail['queryMask'])
 
         target['totalTimeMillis'] += query_millis
         target['queryCount'] += 1
-        target['avgTimeMillis'] = target['totalTimeMillis'] / \
-                                  target['queryCount']
-
-
-    ############################################################################
-    def _get_initial_report(self, report):
-        """Returns a new aggregated report document"""
-        initial_query_detail = self._get_initial_query_detail(report)
-        return OrderedDict({
-            'queryDetails': [initial_query_detail],
-            'queries': [initial_query_detail['queryMask']],
-            'totalTimeMillis': int(report['parsed']['millis']),
-            'avgTimeMillis': int(report['parsed']['millis']),
-            'queryCount': 1,
-            'recommendation': report['recommendation'],
-            'namespace': report['namespace']
-        })
+        target['avgTimeMillis'] = target['totalTimeMillis'] / target['queryCount']
 
     ############################################################################
     def _get_initial_query_detail(self, report):
         """Returns a new query query document from the report"""
         initial_millis = int(report['parsed']['millis'])
-        mask = self._get_query_mask(report['queryAnalysis'])
         return OrderedDict({
-            'queryMask': mask,
+            'queryMask': report['queryAnalysis']['queryMask'],
             'totalTimeMillis': initial_millis,
             'queryCount': 1,
             'avgTimeMillis': initial_millis
         })
-
 
     ############################################################################
     def _get_abbreviated_report(self, report):
         """Returns a minimum of fields from the report"""
         return OrderedDict({
             'namespace' : report['namespace'],
-            'index' : report['recommendation']['index'],
+            'index' : report['recommendation']['index'] if report['recommendation'] is not None else None,
             'avgTimeMillis' : report['avgTimeMillis'],
             'queryCount': report['queryCount'],
             'totalTimeMillis': report['totalTimeMillis'],
-            'queries': report['queries']
+            'queriesCovered': report['queriesCovered']
         })
-
-    ############################################################################
-    def _get_query_mask(self, queryAnalysis):
-        """Converts a queryAnalysis to a query mask"""
-        qmask = '"q": {'
-        smask = '"s": {'
-        qfirst = True
-        sfirst = True
-        for field in queryAnalysis['analyzedFields']:
-            if field['fieldType'] is not SORT_TYPE:
-                if qfirst:
-                    qmask += '"' + field['fieldName'] + '": '
-                    qfirst = False
-                else:
-                    qmask += ', "' + field['fieldName'] + '": '
-                qmask += '"<' + field['fieldName'] + '>"'
-
-            else:
-                if sfirst:
-                    smask += '"' + field['fieldName'] + '": '
-                    sfirst = False
-                else:
-                    smask += ', "' + field['fieldName'] + '": '
-                smask += '"<sort-order>"'
-
-        if sfirst:
-            return "{" + qmask + "}}"
-        else:
-            return "{" + qmask + "}, " + smask + "}}"

@@ -25,8 +25,7 @@
 import pymongo
 import sys
 import time
-import json
-from bson import json_util
+from utils import pretty_json
 from analyzer import QueryAnalyzer, ReportAggregation
 from parser import LogParser, ProfileParser
 from datetime import datetime
@@ -93,20 +92,19 @@ class Dex:
                 db_name = namespace_tuple[0]
                 collection_name = namespace_tuple[1]
                 query_report = None
-                if int(raw_query['millis']) >= self._slowms:
+                if raw_query['millis'] >= self._slowms:
                     try:
                         query_report = self.analyze_query(self._db_uri,
                                                           raw_query,
                                                           db_name,
                                                           collection_name)
                     except Exception as e:
-                        print e
                         return 1
                 if query_report is not None:
                     recommendation = query_report['recommendation']
                     if recommendation is not None:
-                        self._full_report.add_report(query_report)
                         run_stats['linesRecommended'] += 1
+                    self._full_report.add_report(query_report)
 
     ############################################################################
     def analyze_profile(self):
@@ -283,7 +281,9 @@ class Dex:
     ############################################################################
     def _output_aggregated_report(self, out, run_stats):
         output = self._make_aggregated_report(run_stats)
-        out.write(pretty_json(output).replace('"', "'").replace("\\'", '"') + "\n")
+
+        out.write(pretty_json(output))
+        #out.write(pretty_json(output).replace('"', "'").replace("\\'", '"') + "\n")
 
     ############################################################################
     def _tail_file(self, file, interval):
@@ -412,11 +412,3 @@ class Dex:
                 elif requested_namespace[0] not in IGNORE_DBS:
                     requested_databases.append(requested_namespace[0])
         return requested_databases
-
-
-################################################################################
-# Utilities
-################################################################################
-def pretty_json(obj):
-    # Inverts string quotes.
-    return json.dumps(obj, indent=4, default=json_util.default)

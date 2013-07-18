@@ -1,5 +1,6 @@
 __author__ = 'eric'
 
+from utils import pretty_json
 import sys
 import pymongo
 try:
@@ -39,24 +40,22 @@ class QueryAnalyzer:
         self._check_indexes = check_indexes
 
     ############################################################################
-    def _generate_query_report(self, db_uri, raw_query, db_name, collection_name):
+    def _generate_query_report(self, db_uri, parsed_query, db_name, collection_name):
         """Generates a comprehensive report on the raw query"""
         index_analysis = None
         recommendation = None
-        parsed_query = raw_query
-        namespace = raw_query['ns']
+        namespace = parsed_query['ns']
 
         index_cache_entry = self._ensure_index_cache(db_uri,
                                                      db_name,
                                                      collection_name)
-        indexes = index_cache_entry['indexes']
         query_analysis = self._generate_query_analysis(parsed_query,
                                                        db_name,
                                                        collection_name)
         if ((query_analysis['analyzedFields'] != []) and
                 query_analysis['supported']):
             index_analysis = self._generate_index_analysis(query_analysis,
-                                                           indexes)
+                                                           index_cache_entry['indexes'])
             if index_analysis['needsRecommendation']:
                 recommendation = self._generate_recommendation(query_analysis,
                                                                db_name,
@@ -211,6 +210,7 @@ class QueryAnalyzer:
         query_field_count = query_analysis['fieldCount']
         supported = True
         ideal_order = True
+        print pretty_json(index)
         for index_field in index['key']:
             field_name = index_field[0]
 

@@ -22,6 +22,7 @@
 # WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 ################################################################################
 
+import traceback
 import pymongo
 import sys
 import time
@@ -99,6 +100,8 @@ class Dex:
                                                           db_name,
                                                           collection_name)
                     except Exception as e:
+                        print e, e.message
+                        traceback.print_exc()
                         return 1
                 if query_report is not None:
                     recommendation = query_report['recommendation']

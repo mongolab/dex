@@ -309,7 +309,7 @@ class test_dex(unittest.TestCase):
 
     def test_sort_ordering(self):
         test_dex = dex.Dex(TEST_URI, True, [], 0, True)
-        report = test_dex._full_report._reports
+        report = test_dex._report._reports
         test_query = "{ query: {}, orderby: { simpleUnindexedField: null," \
                      "simpleUnindexedFieldTwo: null  },"\
                      "ns: 'dex_test.test_collection', 'millis': 50}"
@@ -332,7 +332,7 @@ class test_dex(unittest.TestCase):
 
     def test_report_aggregation(self):
         test_dex = dex.Dex(TEST_URI, True, [], 0, True)
-        report = test_dex._full_report._reports
+        report = test_dex._report._reports
 
         test_query = "{ query: { simpleUnindexedField: null }, " \
                      "ns: 'dex_test.test_collection', 'millis': 150}"
@@ -340,7 +340,7 @@ class test_dex(unittest.TestCase):
                                         yaml.load(test_query, dex.OrderedDictYAMLLoader),
                                         TEST_DBNAME,
                                         TEST_COLLECTION)
-        test_dex._full_report.add_report(result)
+        test_dex._report.add_query_occurrence(result)
         self.assertEqual(len(report), 1)
         self.assertEqual(report[0]['queryCount'], 1)
         self.assertEqual(len(report[0]['queries']), 1)
@@ -351,7 +351,7 @@ class test_dex(unittest.TestCase):
                                         yaml.load(test_query, dex.OrderedDictYAMLLoader),
                                         TEST_DBNAME,
                                         TEST_COLLECTION)
-        test_dex._full_report.add_report(result)
+        test_dex._report.add_query_occurrence(result)
 
         self.assertEqual(len(report), 1)
         self.assertEqual(report[0]['queryCount'], 2)
@@ -366,8 +366,8 @@ class test_dex(unittest.TestCase):
                                         TEST_DBNAME,
                                         TEST_COLLECTION)
         #adding twice for a double query
-        test_dex._full_report.add_report(result)
-        test_dex._full_report.add_report(result)
+        test_dex._report.add_query_occurrence(result)
+        test_dex._report.add_query_occurrence(result)
 
         self.assertEqual(len(report), 2)
         self.assertEqual(report[0]['queryCount'], 2)

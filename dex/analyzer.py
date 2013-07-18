@@ -63,6 +63,7 @@ class QueryAnalyzer:
 
         # QUERY REPORT
         return OrderedDict({
+            'queryMask': parsed_query['queryMask'],
             'parsed': parsed_query,
             'namespace': namespace,
             'queryAnalysis': query_analysis,
@@ -145,7 +146,7 @@ class QueryAnalyzer:
                 analyzed_fields.append(analyzed_field)
                 field_count += 1
 
-        query_mask = parsed_query['mask']
+        query_mask = parsed_query['queryMask']
 
         # QUERY ANALYSIS
         return OrderedDict({
@@ -210,7 +211,6 @@ class QueryAnalyzer:
         query_field_count = query_analysis['fieldCount']
         supported = True
         ideal_order = True
-        print pretty_json(index)
         for index_field in index['key']:
             field_name = index_field[0]
 
@@ -299,11 +299,11 @@ class ReportAggregation:
         self._reports = []
 
     ############################################################################
-    def add_report(self, report):
+    def add_query_occurrence(self, report):
         """Adds a report to the report aggregation"""
 
         initial_query_detail = self._get_initial_query_detail(report)
-        mask = initial_query_detail['queryMask']
+        mask = report['queryMask']
 
         existing_report = self._get_existing_Report(mask, report)
 
@@ -312,15 +312,11 @@ class ReportAggregation:
                     (report['indexAnalysis']['needsRecommendation'] is True)):
                 self._merge_report(existing_report, report)
         else:
-            self._reports.append(OrderedDict({
-                'queryDetails': [initial_query_detail],
-                'queriesCovered': [mask],
-                'totalTimeMillis': int(report['parsed']['millis']),
-                'avgTimeMillis': int(report['parsed']['millis']),
-                'queryCount': 1,
-                'recommendation': report['recommendation'],
-                'namespace': report['namespace']
-            }))
+            self._reports.append(OrderedDict([
+                ('queryMask', mask),
+                ('namespace', report['namespace']),
+                ('recommendation', report['recommendation']),
+                ('details', initial_query_detail)]))
 
     ############################################################################
     def get_aggregated_reports_verbose(self):
@@ -340,48 +336,25 @@ class ReportAggregation:
         """Returns the aggregated report that matches report"""
         for existing_report in self._reports:
             if existing_report['namespace'] == report['namespace']:
-                if mask in existing_report['queriesCovered']:
+                if mask == existing_report['queryMask']:
                     return existing_report
-        return None
-
-    ############################################################################
-    def _get_existing_query(self, report, queryAnalysis):
-        """Returns the query in report that matches queryAnalysis"""
-        for query in report['queryDetails']:
-            if queryAnalysis['queryMask'] == query['queryMask']:
-                return query
         return None
 
     ############################################################################
     def _merge_report(self, target, new):
         """Merges a new report into the target report"""
         query_millis = int(new['parsed']['millis'])
-        current_sig = self._get_existing_query(target, new['queryAnalysis'])
+        print pretty_json(target)
 
-        if current_sig is not None:
-            current_sig['totalTimeMillis'] += query_millis
-            current_sig['queryCount'] += 1
-            current_sig['avgTimeMillis'] = current_sig['totalTimeMillis'] / current_sig['queryCount']
-
-        else:
-            initial_query_detail = self._get_initial_query_detail(new)
-            target['queryDetails'].append(initial_query_detail)
-            target['queriesCovered'].append(initial_query_detail['queryMask'])
-
-        target['totalTimeMillis'] += query_millis
-        target['queryCount'] += 1
-        target['avgTimeMillis'] = target['totalTimeMillis'] / target['queryCount']
+        target['details']['totalTimeMillis'] += query_millis
+        target['details']['count'] += 1
+        target['details']['avgTimeMillis'] = target['details']['totalTimeMillis'] / target['details']['count']
 
     ############################################################################
     def _get_initial_query_detail(self, report):
         """Returns a new query query document from the report"""
         initial_millis = int(report['parsed']['millis'])
-        return OrderedDict({
-            'queryMask': report['queryAnalysis']['queryMask'],
-            'totalTimeMillis': initial_millis,
-            'queryCount': 1,
-            'avgTimeMillis': initial_millis
-        })
+        return OrderedDict([('count', 1), ('totalTimeMillis', initial_millis), ('avgTimeMillis', initial_millis)])
 
     ############################################################################
     def _get_abbreviated_report(self, report):

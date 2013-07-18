@@ -18,7 +18,7 @@ Initial data structure extracted from a parsed log line or profile entry.
 
 ```
 {
-    "mask": <string>,
+    "queryMask": <string>,
     "ns": <string>,
     "query": <json>,
     "orderby": <json>,
@@ -97,8 +97,8 @@ A union of multiple queryOccurrences that drops line-specific information and ag
 
 ```
 {
-    "queryMask": <queryReport.queryMask>,
-    "recommendations": <queryReport.recommendation>,
+    "queryMask": <queryOccurrence.queryMask>,
+    "recommendation": <queryOccurrence.recommendation>,
     "namespace": <queryReport.namespace>,
     "details": <aggregatedDetails>
 }

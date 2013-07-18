@@ -164,7 +164,7 @@ class LogParser(Parser):
                 result = OrderedDict()
                 if parsed is not None:
                     parsed = scrub(parsed['query']) if 'query' in parsed else OrderedDict()
-                    result['mask'] = mask(parsed)
+                    result['queryMask'] = mask(parsed)
                     #query['time'] = datetime.strptime(match.group('ts'), "%a %b %d %H:%M:%S")
                     result['millis'] = match.group('query_time')
                     result['ns'] =  match.group('ns')
@@ -241,6 +241,7 @@ class LogParser(Parser):
                     query['stats'] = parse_line_stats(match.group('stats'))
                 return query
             return None
+
 
 # From https://gist.github.com/844388
 class OrderedDictYAMLLoader(yaml.Loader):

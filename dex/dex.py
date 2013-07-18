@@ -22,7 +22,6 @@
 # WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 ################################################################################
 
-import traceback
 import pymongo
 import sys
 import time
@@ -66,7 +65,7 @@ class Dex:
         self._verbose = verbose
         self._requested_namespaces = self._validate_namespaces(namespaces_list)
         self._recommendation_cache = []
-        self._full_report = ReportAggregation()
+        self._report = ReportAggregation()
         self._start_time = None
         self._timeout_time = None
         self._timeout = timeout
@@ -100,14 +99,13 @@ class Dex:
                                                           db_name,
                                                           collection_name)
                     except Exception as e:
-                        print e, e.message
-                        traceback.print_exc()
+                        print e.message
                         return 1
                 if query_report is not None:
                     recommendation = query_report['recommendation']
                     if recommendation is not None:
                         run_stats['linesRecommended'] += 1
-                    self._full_report.add_report(query_report)
+                    self._report.add_query_occurrence(query_report)
 
     ############################################################################
     def analyze_profile(self):
@@ -274,11 +272,11 @@ class Dex:
     ############################################################################
     def _make_aggregated_report(self, run_stats):
         if self._verbose:
-            results = self._full_report.get_aggregated_reports_verbose()
+            results = self._report.get_aggregated_reports_verbose()
         else:
-            results = self._full_report.get_aggregated_reports()
+            results = self._report.get_aggregated_reports()
         from operator import itemgetter
-        return {'results': sorted(results, key=itemgetter('totalTimeMillis'), reverse=True),
+        return {'results': sorted(results, key=lambda x: x['details']['totalTimeMillis'], reverse=True), #itemgetter('totalTimeMillis'), reverse=True),
                 'runStats': run_stats}
 
     ############################################################################

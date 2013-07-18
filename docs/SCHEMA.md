@@ -1,11 +1,11 @@
-#queryReport
+#queryOccurrence
 Primary structure for Dex. Represents Dex's assessment of a single occurrence of a single query.
 
 
 ```
 {
     "queryMask": <string>
-    "recommendations": [<recommendation>,...],
+    "recommendations": <recommendation>,
     "indexAnalysis": <indexAnalysis>,
     "namespace":  <string>,
     "details": <details>,
@@ -13,7 +13,7 @@ Primary structure for Dex. Represents Dex's assessment of a single occurrence of
 }
 ```
 
-##queryReport.details
+##queryOccurrence.details
 Initial data structure extracted from a parsed log line or profile entry.
 
 ```
@@ -37,7 +37,7 @@ Initial data structure extracted from a parsed log line or profile entry.
 }
 ```
 
-##queryReport.queryAnalysis
+##queryOccurrence.queryAnalysis
 An extraction of field information from the queryReport.query and queryReport.orderby
 
 ```
@@ -48,7 +48,7 @@ An extraction of field information from the queryReport.query and queryReport.or
 }
 ```
 
-###queryReport.queryAnalysis.fieldAnalysis
+###queryOccurrence.queryAnalysis.fieldAnalysis
 A description of the field, specifically, its type.
 
 ```
@@ -59,18 +59,18 @@ A description of the field, specifically, its type.
 }
 ```
 
-##queryReport.indexAnalysis
+##queryOccurrence.indexAnalysis
 A comparison of the available indexes in a collection to the needs of the query
 
 ```
 {
     "needsRecommendation": <boolean>,
-    "fullIndexes": [<indexReport],
-    "partialIndexes": [indexReport]
+    "fullIndexes": [<indexReport>],
+    "partialIndexes": [<indexReport>]
 }
 ```
 
-###queryReport.indexAnalysis.indexReport
+###queryOccurrence.indexAnalysis.indexReport
 An evaluation of each index's ability to cover the query
 
 ```
@@ -83,36 +83,34 @@ An evaluation of each index's ability to cover the query
 }
 ```
 
-##queryReport.recommendation
+##queryOccurrence.recommendation
 The ultimate recommendation for the query
 
 ```
 {
     "index": <string>,
-    "namespace": <string>, --remove
-    "shellCommand": <string> --remove and generate for display purposes when necessary
 }
 ```
 
-#aggregatedQueryReport
-A union of multiple query reports that drops line-specific information and aggregates fully to the query level. In the future, this will aggregate multiple distinct queries, which is why queryMask and details are arrays. (initially they do not need to be)
+#queryReport
+A union of multiple queryOccurrences that drops line-specific information and aggregates fully to the query level. In the future, this will aggregate multiple distinct queries, which is why queryMask and details are arrays. (initially they do not need to be)
 
 ```
 {
-    "queryMask": [<queryReport.queryMask>,…]
-    "recommendations": [<queryReport.recommendation>,...],
+    "queryMask": <queryReport.queryMask>,
+    "recommendations": <queryReport.recommendation>,
     "namespace": <queryReport.namespace>,
-    "details": [<aggregatedDetails>,...]
+    "details": <aggregatedDetails>
 }
 ```
 
-##aggregatedQueryReport.aggregatedDetails
+##queryReport.aggregatedDetails
 Aggregated details across multiple queries, drawn from aggregating queryReport.parsed
 
 ```
 {
-    "query": <json>,
-    "orderby": <json>,
+    "query": <string>,
+    "orderby": <string>,
     "stats": {
     	"count": <int>,
     	"totalTimeMillis": <int>,
@@ -132,6 +130,6 @@ Aggregated details across multiple queries, drawn from aggregating queryReport.p
     "linesPassed": <int>,
     "linesRecommended": <int>
     },
-  "results": [<aggregatedQueryReport>]
+  "results": [<queryReport>,...]
 }
 ```

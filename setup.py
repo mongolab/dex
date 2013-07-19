@@ -26,7 +26,7 @@ from distutils.core import setup
 
 setup(
       name='Dex',
-      version='0.5.5',
+      version='0.6',
       author='The MongoLab Team',
       author_email='team@mongolab.com',
       description='Index and query analyzer for MongoDB',

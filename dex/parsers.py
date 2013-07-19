@@ -1,9 +1,8 @@
 __author__ = 'eric'
 
 import re
-import yaml
-import yaml.constructor
-from utils import pretty_json, small_json
+from utils import pretty_json, small_json, yamlfy
+import traceback
 
 try:
     from collections import OrderedDict
@@ -137,12 +136,12 @@ class LogParser(Parser):
 class QueryLineHandler:
     ########################################################################
     def parse_query(self, extracted_query):
-        temp_query = yaml.load(extracted_query, OrderedDictYAMLLoader)
+        yaml_query = yamlfy(extracted_query)
 
-        if '$query' not in temp_query:
-            return OrderedDict([('$query', temp_query)])
+        if '$query' not in yaml_query:
+            return OrderedDict([('$query', yaml_query)])
         else:
-            return temp_query
+            return yaml_query
 
     def parse_line_stats(self, stat_string):
         line_stats = {}
@@ -211,22 +210,30 @@ class CmdQueryHandler(QueryLineHandler):
     def handle(self, input):
         match = self._rx.match(input)
         if match is not None:
-            query = self.parse_query(match.group('query'))
-            if query is not None:
-                query['millis'] = match.group('query_time')
-                if query.has_key('count'):
-                    query['ns'] = match.group('db') + '.'
-                    query['ns'] += query['count']
-                elif query.has_key('findandmodify'):
-                    if query.has_key('sort'):
-                        query['orderby'] = query['sort']
-                        del(query['sort'])
-                    query['ns'] = match.group('db') + '.'
-                    query['ns'] += query['findandmodify']
+            parsed = yamlfy(match.group('query'))
+            if parsed is not None:
+                result = OrderedDict()
+                result['stats'] = self.parse_line_stats(match.group('stats'))
+                result['stats']['millis'] = match.group('query_time')
+
+                toMask = OrderedDict()
+                result['query'] = scrub(parsed['query'])
+                toMask['$query'] = parsed['query']
+
+                if 'count' in parsed:
+                    result['ns'] = match.group('db') + '.'
+                    result['ns'] += parsed['count']
+                elif 'findandmodify' in parsed:
+                    if 'sort' in parsed:
+                        result['orderby'] = parsed['sort']
+                        toMask['$orderby'] = parsed['sort']
+                    result['ns'] = match.group('db') + '.'
+                    result['ns'] += parsed['findandmodify']
                 else:
                     return None
-                query['stats'] = self.parse_line_stats(match.group('stats'))
-            return query
+
+                result['queryMask'] = mask(toMask)
+                return result
         return None
 
 
@@ -262,44 +269,6 @@ class UpdateQueryHandler(QueryLineHandler):
                 result['stats']['millis'] = match.group('query_time')
                 return result
         return None
-
-
-# From https://gist.github.com/844388
-class OrderedDictYAMLLoader(yaml.Loader):
-    """
-    A YAML loader that loads mappings into ordered dictionaries.
-    """
-
-    def __init__(self, *args, **kwargs):
-        yaml.Loader.__init__(self, *args, **kwargs)
-
-        self.add_constructor(u'tag:yaml.org,2002:map', type(self).construct_yaml_map)
-        self.add_constructor(u'tag:yaml.org,2002:omap', type(self).construct_yaml_map)
-
-    def construct_yaml_map(self, node):
-        data = OrderedDict()
-        yield data
-        value = self.construct_mapping(node)
-        data.update(value)
-
-    def construct_mapping(self, node, deep=False):
-        if isinstance(node, yaml.MappingNode):
-            self.flatten_mapping(node)
-        else:
-            raise yaml.constructor.ConstructorError(None, None,
-                                                    'expected a mapping node, but found %s' % node.id, node.start_mark)
-
-        mapping = OrderedDict()
-        for key_node, value_node in node.value:
-            key = self.construct_object(key_node, deep=deep)
-            try:
-                hash(key)
-            except TypeError, exc:
-                raise yaml.constructor.ConstructorError('while constructing a mapping',
-                                                        node.start_mark, 'found unacceptable key (%s)' % exc, key_node.start_mark)
-            value = self.construct_object(value_node, deep=deep)
-            mapping[key] = value
-        return mapping
 
 
 

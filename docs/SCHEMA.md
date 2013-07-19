@@ -1,11 +1,52 @@
-#queryOccurrence
-Primary structure for Dex. Represents Dex's assessment of a single occurrence of a single query.
+# DexResult
+The output of Dex
+```
+{
+  "runStats": {
+    "linesProcessed": <int>,
+    "linesPassed": <int>,
+    "linesRecommended": <int>
+    },
+  "results": [<queryReport>,...]
+}
+```
 
+#queryReport
+A report on a query uniquely identified by queryMask.
 
 ```
 {
+    "queryMask": <queryOccurrence.queryMask>,
+    "recommendation": <queryOccurrence.recommendation>,
+    "namespace": <queryReport.namespace>,
+    "details": <aggregatedDetails>
+}
+```
+
+##queryReport.aggregatedDetails
+Aggregated details of all the occurrences of the query identified in the report. drawn from aggregating queryOccurrence.parsed
+
+```
+{
+    "query": <string>,
+    "orderby": <string>,
+    "stats": {
+        "count": <int>,
+        "totalTimeMillis": <int>,
+        "avgTimeMillis": <int>,
+        "avgNumReturned": <int>,
+        "scanAndOrder": <boolean>,
+        "avgNumScanned": <int>
+    }
+}
+```
+
+#queryOccurrence
+Primary internal data structure for Dex. Represents Dex's assessment of a single occurrence of a single query.
+```
+{
     "queryMask": <string>
-    "recommendations": <recommendation>,
+    "recommendation": <recommendation>,
     "indexAnalysis": <indexAnalysis>,
     "namespace":  <string>,
     "details": <details>,
@@ -88,48 +129,6 @@ The ultimate recommendation for the query
 
 ```
 {
-    "index": <string>,
-}
-```
-
-#queryReport
-A union of multiple queryOccurrences that drops line-specific information and aggregates fully to the query level. In the future, this will aggregate multiple distinct queries, which is why queryMask and details are arrays. (initially they do not need to be)
-
-```
-{
-    "queryMask": <queryOccurrence.queryMask>,
-    "recommendation": <queryOccurrence.recommendation>,
-    "namespace": <queryReport.namespace>,
-    "details": <aggregatedDetails>
-}
-```
-
-##queryReport.aggregatedDetails
-Aggregated details across multiple queries, drawn from aggregating queryReport.parsed
-
-```
-{
-    "query": <string>,
-    "orderby": <string>,
-    "stats": {
-    	"count": <int>,
-    	"totalTimeMillis": <int>,
-        "avgTimeMillis": <int>,
-        "avgNumReturned": <int>,
-        "scanAndOrder": <boolean>,
-        "avgNumScanned": <int>
-    }
-}
-```
-
-# DexResult
-```
-{
-  "runStats": {
-    "linesProcessed": <int>,
-    "linesPassed": <int>,
-    "linesRecommended": <int>
-    },
-  "results": [<queryReport>,...]
+    "index": <string>
 }
 ```

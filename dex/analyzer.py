@@ -40,7 +40,7 @@ class QueryAnalyzer:
         self._check_indexes = check_indexes
 
     ############################################################################
-    def _generate_query_report(self, db_uri, parsed_query, db_name, collection_name):
+    def _generate_query_occurrence(self, db_uri, parsed_query, db_name, collection_name):
         """Generates a comprehensive report on the raw query"""
         index_analysis = None
         recommendation = None
@@ -305,7 +305,7 @@ class ReportAggregation:
         initial_query_detail = self._get_initial_query_detail(report)
         mask = report['queryMask']
 
-        existing_report = self._get_existing_Report(mask, report)
+        existing_report = self._get_existing_report(mask, report)
 
         if existing_report is not None:
             if ((report['indexAnalysis'] is None) or
@@ -326,7 +326,7 @@ class ReportAggregation:
                       reverse=True)
 
     ############################################################################
-    def _get_existing_Report(self, mask, report):
+    def _get_existing_report(self, mask, report):
         """Returns the aggregated report that matches report"""
         for existing_report in self._reports:
             if existing_report['namespace'] == report['namespace']:
@@ -338,7 +338,6 @@ class ReportAggregation:
     def _merge_report(self, target, new):
         """Merges a new report into the target report"""
         query_millis = int(new['parsed']['stats']['millis'])
-
         target['details']['totalTimeMillis'] += query_millis
         target['details']['count'] += 1
         target['details']['avgTimeMillis'] = target['details']['totalTimeMillis'] / target['details']['count']

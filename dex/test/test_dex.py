@@ -84,56 +84,56 @@ class test_dex(unittest.TestCase):
         test_dex = dex.Dex(TEST_URI, False, [], 0, True, 0)
         
         test_query = "{ simpleUnindexedField: null }"
-        result = test_dex.analyze_query(TEST_URI,
+        result = test_dex.generate_query_report(TEST_URI,
                                         self.parser.parse(test_query),
                                         TEST_DBNAME,
                                         TEST_COLLECTION)        
         self.assertEqual(result['recommendation']['index'], '{"simpleUnindexedField": 1}')
                 
         test_query = "{ simpleIndexedField: null }"
-        result = test_dex.analyze_query(TEST_URI,
+        result = test_dex.generate_query_report(TEST_URI,
                                         self.parser.parse(test_query),
                                         TEST_DBNAME,
                                         TEST_COLLECTION)        
         self.assertEqual(result['recommendation'], None, pretty_json(result))
                 
         test_query = "{ simpleUnindexedField: {$lt: 4}}"
-        result = test_dex.analyze_query(TEST_URI,
+        result = test_dex.generate_query_report(TEST_URI,
                                         self.parser.parse(test_query),
                                         TEST_DBNAME,
                                         TEST_COLLECTION)        
         self.assertEqual(result['recommendation']['index'], '{"simpleUnindexedField": 1}')
                 
         test_query = "{ simpleIndexedField:  { $lt: 4 }}"
-        result = test_dex.analyze_query(TEST_URI,
+        result = test_dex.generate_query_report(TEST_URI,
                                         self.parser.parse(test_query),
                                         TEST_DBNAME,
                                         TEST_COLLECTION)        
         self.assertEqual(result['recommendation'], None)
                 
         test_query = "{ $query: {}, $orderby: { simpleUnindexedField }}"
-        result = test_dex.analyze_query(TEST_URI,
+        result = test_dex.generate_query_report(TEST_URI,
                                         self.parser.parse(test_query),
                                         TEST_DBNAME,
                                         TEST_COLLECTION)        
         self.assertEqual(result['recommendation']['index'], '{"simpleUnindexedField": 1}')
                 
         test_query = "{ $query: {}, $orderby: { simpleIndexedField: 1 }}"
-        result = test_dex.analyze_query(TEST_URI,
+        result = test_dex.generate_query_report(TEST_URI,
                                         self.parser.parse(test_query),
                                         TEST_DBNAME,
                                         TEST_COLLECTION)        
         self.assertEqual(result['recommendation'], None)
                 
         test_query = "{complexUnindexedFieldOne: null, complexUnindexedFieldTwo: null }"
-        result = test_dex.analyze_query(TEST_URI,
+        result = test_dex.generate_query_report(TEST_URI,
                                         self.parser.parse(test_query),
                                         TEST_DBNAME,
                                         TEST_COLLECTION)        
         self.assertEqual(result['recommendation']['index'], '{"complexUnindexedFieldOne": 1, "complexUnindexedFieldTwo": 1}')
         
         test_query = "{ complexIndexedFieldOne: null, complexIndexedFieldTwo: null }"
-        result = test_dex.analyze_query(TEST_URI,
+        result = test_dex.generate_query_report(TEST_URI,
                                         self.parser.parse(test_query),
                                         TEST_DBNAME,
                                         TEST_COLLECTION)        
@@ -141,70 +141,70 @@ class test_dex(unittest.TestCase):
         self.assertEqual(result['indexAnalysis']['fullIndexes'][0]['index']['key'], [('complexIndexedFieldOne', -1), ('complexIndexedFieldTwo', -1), ('complexIndexedFieldThree', -1)])
                 
         test_query = "{ complexUnindexedFieldOne: null, complexUnindexedFieldTwo: { $lt: 4 }}"
-        result = test_dex.analyze_query(TEST_URI,
+        result = test_dex.generate_query_report(TEST_URI,
                                         self.parser.parse(test_query),
                                         TEST_DBNAME,
                                         TEST_COLLECTION)        
         self.assertEqual(result['recommendation']['index'], '{"complexUnindexedFieldOne": 1, "complexUnindexedFieldTwo": 1}')
         
         test_query = "{ complexIndexedFieldOne: null, complexIndexedFieldTwo: { $lt: 4 }  }"
-        result = test_dex.analyze_query(TEST_URI,
+        result = test_dex.generate_query_report(TEST_URI,
                                         self.parser.parse(test_query),
                                         TEST_DBNAME,
                                         TEST_COLLECTION)        
         self.assertEqual(result['recommendation'], None, pretty_json(result))
                 
         test_query = "{ complexIndexedFieldNine: null, complexIndexedFieldTen: { $lt: 4 }  }"
-        result = test_dex.analyze_query(TEST_URI,
+        result = test_dex.generate_query_report(TEST_URI,
                                         self.parser.parse(test_query),
                                         TEST_DBNAME,
                                         TEST_COLLECTION)        
         self.assertEqual(result['recommendation']['index'], '{"complexIndexedFieldNine": 1, "complexIndexedFieldTen": 1}')
         
         test_query = "{ $query: {complexUnindexedFieldOne: null}, $orderby: { complexUnindexedFieldTwo: 1 } }"
-        result = test_dex.analyze_query(TEST_URI,
+        result = test_dex.generate_query_report(TEST_URI,
                                         self.parser.parse(test_query),
                                         TEST_DBNAME,
                                         TEST_COLLECTION)        
         self.assertEqual(result['recommendation']['index'], '{"complexUnindexedFieldOne": 1, "complexUnindexedFieldTwo": 1}')
                 
         test_query = "{ $query: {complexIndexedFieldOne: null}, $orderby: { complexIndexedFieldTwo: 1 } }"
-        result = test_dex.analyze_query(TEST_URI,
+        result = test_dex.generate_query_report(TEST_URI,
                                         self.parser.parse(test_query),
                                         TEST_DBNAME,
                                         TEST_COLLECTION)        
         self.assertEqual(result['recommendation'], None)
         
         test_query = "{ $query: {complexIndexedFieldTen: {$lt: 4}}, $orderby: { complexIndexedFieldNine: 1 } }"
-        result = test_dex.analyze_query(TEST_URI,
+        result = test_dex.generate_query_report(TEST_URI,
                                         self.parser.parse(test_query),
                                         TEST_DBNAME,
                                         TEST_COLLECTION)        
         self.assertEqual(result['recommendation']['index'], '{"complexIndexedFieldNine": 1, "complexIndexedFieldTen": 1}')
                 
         test_query = "{ $query: {complexIndexedFieldThree: null, complexIndexedFieldTwo: {$lt: 4}}, $orderby: { complexIndexedFieldOne: 1 }}"
-        result = test_dex.analyze_query(TEST_URI,
+        result = test_dex.generate_query_report(TEST_URI,
                                         self.parser.parse(test_query),
                                         TEST_DBNAME,
                                         TEST_COLLECTION)        
         self.assertEqual(result['recommendation']['index'], '{"complexIndexedFieldThree": 1, "complexIndexedFieldOne": 1, "complexIndexedFieldTwo": 1}')
         
         test_query = "{ $query: {complexIndexedFieldOne: null, complexIndexedFieldThree: {$lt: 4}}, $orderby: { complexIndexedFieldTwo: 1 } }"
-        result = test_dex.analyze_query(TEST_URI,
+        result = test_dex.generate_query_report(TEST_URI,
                                         self.parser.parse(test_query),
                                         TEST_DBNAME,
                                         TEST_COLLECTION)        
         self.assertEqual(result['recommendation'], None)
                 
         test_query = "{ $query: { $or: [ { orFieldOne: { $lt: 4 } }, {orFieldTwo: { $gt: 5 } }], complexUnindexedFieldOne: 'A'}, $orderby: { _id: 1 }}"
-        result = test_dex.analyze_query(TEST_URI,
+        result = test_dex.generate_query_report(TEST_URI,
                                         self.parser.parse(test_query),
                                         TEST_DBNAME,
                                         TEST_COLLECTION)        
         self.assertEqual(result['recommendation'], None)
         
         test_query = "{ geoIndexedFieldOne: { $near: [50, 50] } } "
-        result = test_dex.analyze_query(TEST_URI,
+        result = test_dex.generate_query_report(TEST_URI,
                                         self.parser.parse(test_query),
                                         TEST_DBNAME,
                                         TEST_COLLECTION)        
@@ -319,7 +319,7 @@ class test_dex(unittest.TestCase):
         test_dex = dex.Dex(TEST_URI, True, [], 0, True, 0)
         report = test_dex._report._reports
         test_query = "{ $query: {}, $orderby: { simpleUnindexedField: null, simpleUnindexedFieldTwo: null  }}"
-        result = test_dex.analyze_query(None,
+        result = test_dex.generate_query_report(None,
                                         self.parser.parse(test_query),
                                         TEST_DBNAME,
                                         TEST_COLLECTION)
@@ -327,7 +327,7 @@ class test_dex(unittest.TestCase):
                          '{"simpleUnindexedField": 1, "simpleUnindexedFieldTwo": 1}')
 
         test_query = "{ $query: {}, $orderby: { simpleUnindexedFieldTwo: null, simpleUnindexedFieldOne: null  }}"
-        result = test_dex.analyze_query(None,
+        result = test_dex.generate_query_report(None,
                                         self.parser.parse(test_query),
                                         TEST_DBNAME,
                                         TEST_COLLECTION)
@@ -339,7 +339,7 @@ class test_dex(unittest.TestCase):
         report = test_dex._report._reports
 
         test_query = "{ simpleUnindexedField: null }"
-        result = test_dex.analyze_query(None,
+        result = test_dex.generate_query_report(None,
                                         self.parser.parse(test_query),
                                         TEST_DBNAME,
                                         TEST_COLLECTION)
@@ -348,7 +348,7 @@ class test_dex(unittest.TestCase):
         self.assertEqual(report[0]['details']['count'], 1)
 
         test_query = "{ $query: {}, $orderby: { simpleUnindexedField: null }}"
-        result = test_dex.analyze_query(None,
+        result = test_dex.generate_query_report(None,
                                         self.parser.parse(test_query),
                                         TEST_DBNAME,
                                         TEST_COLLECTION)
@@ -357,7 +357,7 @@ class test_dex(unittest.TestCase):
         self.assertEqual(len(report), 2)
 
         test_query = "{ anotherUnindexedField: null }"
-        result = test_dex.analyze_query(None,
+        result = test_dex.generate_query_report(None,
                                         self.parser.parse(test_query),
                                         TEST_DBNAME,
                                         TEST_COLLECTION)

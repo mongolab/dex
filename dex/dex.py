@@ -72,9 +72,9 @@ class Dex:
 
 
     ############################################################################
-    def analyze_query(self, db_uri, query, db_name, collection_name):
+    def generate_query_report(self, db_uri, query, db_name, collection_name):
         """Analyzes a single query"""
-        return self._query_analyzer._generate_query_report(db_uri,
+        return self._query_analyzer._generate_query_occurrence(db_uri,
                                                            query,
                                                            db_name,
                                                            collection_name)
@@ -94,7 +94,7 @@ class Dex:
                 query_report = None
                 if parsed['stats']['millis'] >= self._slowms:
                     try:
-                        query_report = self.analyze_query(self._db_uri,
+                        query_report = self.generate_query_report(self._db_uri,
                                                           parsed,
                                                           db_name,
                                                           collection_name)

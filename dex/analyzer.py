@@ -337,7 +337,7 @@ class ReportAggregation:
     ############################################################################
     def _merge_report(self, target, new):
         """Merges a new report into the target report"""
-        query_millis = int(new['parsed']['millis'])
+        query_millis = int(new['parsed']['stats']['millis'])
 
         target['details']['totalTimeMillis'] += query_millis
         target['details']['count'] += 1
@@ -345,9 +345,8 @@ class ReportAggregation:
 
     ############################################################################
     def _get_initial_query_detail(self, report):
-        print pretty_json(report)
         """Returns a new query query document from the report"""
-        initial_millis = int(report['parsed']['millis'])
+        initial_millis = int(report['parsed']['stats']['millis'])
         detail = OrderedDict([('count', 1),
                               ('totalTimeMillis', initial_millis),
                               ('avgTimeMillis', initial_millis)])

@@ -27,12 +27,19 @@ import pymongo
 import yaml
 import sys
 from dex import dex
+from dex.parsers import OrderedDictYAMLLoader, Parser, QueryLineHandler, mask, scrub
+from dex.utils import pretty_json
 import os
+try:
+    from collections import OrderedDict
+except ImportError:
+    from ordereddict import OrderedDict
 
 TEST_URI = "mongodb://localhost:27017"
 TEST_DBNAME = "dex_test"
 TEST_COLLECTION = "test_collection"
 TEST_LOGFILE = os.path.dirname(__file__) + "/whitebox.log"
+
 
 class test_dex(unittest.TestCase):
     
@@ -43,6 +50,7 @@ class test_dex(unittest.TestCase):
             cls._connection.drop_database(TEST_DBNAME)
             db = cls._connection[TEST_DBNAME]
             collection = db[TEST_COLLECTION]
+            cls.parser = TestParser()
                 
             collection.create_index("simpleIndexedField")
             collection.create_index([("complexIndexedFieldOne",
@@ -73,151 +81,151 @@ class test_dex(unittest.TestCase):
         pass
    
     def test_analyze_query(self):
-        test_dex = dex.Dex(TEST_URI, False, [], 0, True)
+        test_dex = dex.Dex(TEST_URI, False, [], 0, True, 0)
         
-        test_query = "{ query: { simpleUnindexedField: null }, ns: 'dex_test.test_collection'}"
+        test_query = "{ simpleUnindexedField: null }"
         result = test_dex.analyze_query(TEST_URI,
-                                        yaml.load(test_query, dex.OrderedDictYAMLLoader),
+                                        self.parser.parse(test_query),
                                         TEST_DBNAME,
                                         TEST_COLLECTION)        
-        self.assertEqual(result['recommendation']['index'], "{'simpleUnindexedField': 1}")
+        self.assertEqual(result['recommendation']['index'], '{"simpleUnindexedField": 1}')
                 
-        test_query = "{ query: { simpleIndexedField: null }, ns: 'dex_test.test_collection'}"
+        test_query = "{ simpleIndexedField: null }"
         result = test_dex.analyze_query(TEST_URI,
-                                        yaml.load(test_query, dex.OrderedDictYAMLLoader),
+                                        self.parser.parse(test_query),
                                         TEST_DBNAME,
                                         TEST_COLLECTION)        
-        self.assertEqual(result['recommendation'], None, dex.pretty_json(result))
+        self.assertEqual(result['recommendation'], None, pretty_json(result))
                 
-        test_query = "{ query: { simpleUnindexedField: {$lt: 4}}, ns: 'dex_test.test_collection'}"
+        test_query = "{ simpleUnindexedField: {$lt: 4}}"
         result = test_dex.analyze_query(TEST_URI,
-                                        yaml.load(test_query, dex.OrderedDictYAMLLoader),
+                                        self.parser.parse(test_query),
                                         TEST_DBNAME,
                                         TEST_COLLECTION)        
-        self.assertEqual(result['recommendation']['index'], "{'simpleUnindexedField': 1}")
+        self.assertEqual(result['recommendation']['index'], '{"simpleUnindexedField": 1}')
                 
-        test_query = "{ query: { simpleIndexedField:  { $lt: 4 } }, ns: 'dex_test.test_collection'}"
+        test_query = "{ simpleIndexedField:  { $lt: 4 }}"
         result = test_dex.analyze_query(TEST_URI,
-                                        yaml.load(test_query, dex.OrderedDictYAMLLoader),
+                                        self.parser.parse(test_query),
                                         TEST_DBNAME,
                                         TEST_COLLECTION)        
         self.assertEqual(result['recommendation'], None)
                 
-        test_query = "{ query: {}, orderby: { simpleUnindexedField }, ns: 'dex_test.test_collection'}"
+        test_query = "{ $query: {}, $orderby: { simpleUnindexedField }}"
         result = test_dex.analyze_query(TEST_URI,
-                                        yaml.load(test_query, dex.OrderedDictYAMLLoader),
+                                        self.parser.parse(test_query),
                                         TEST_DBNAME,
                                         TEST_COLLECTION)        
-        self.assertEqual(result['recommendation']['index'], "{'simpleUnindexedField': 1}")
+        self.assertEqual(result['recommendation']['index'], '{"simpleUnindexedField": 1}')
                 
-        test_query = "{ query: {}, orderby: { simpleIndexedField: 1 }, ns: 'dex_test.test_collection'}"
+        test_query = "{ $query: {}, $orderby: { simpleIndexedField: 1 }}"
         result = test_dex.analyze_query(TEST_URI,
-                                        yaml.load(test_query, dex.OrderedDictYAMLLoader),
+                                        self.parser.parse(test_query),
                                         TEST_DBNAME,
                                         TEST_COLLECTION)        
         self.assertEqual(result['recommendation'], None)
                 
-        test_query = "{ query: {complexUnindexedFieldOne: null, complexUnindexedFieldTwo: null }, ns: 'dex_test.test_collection'}"
+        test_query = "{complexUnindexedFieldOne: null, complexUnindexedFieldTwo: null }"
         result = test_dex.analyze_query(TEST_URI,
-                                        yaml.load(test_query, dex.OrderedDictYAMLLoader),
+                                        self.parser.parse(test_query),
                                         TEST_DBNAME,
                                         TEST_COLLECTION)        
-        self.assertEqual(result['recommendation']['index'], "{'complexUnindexedFieldOne': 1, 'complexUnindexedFieldTwo': 1}")
+        self.assertEqual(result['recommendation']['index'], '{"complexUnindexedFieldOne": 1, "complexUnindexedFieldTwo": 1}')
         
-        test_query = "{ query: { complexIndexedFieldOne: null, complexIndexedFieldTwo: null }, ns: 'dex_test.test_collection'}"
+        test_query = "{ complexIndexedFieldOne: null, complexIndexedFieldTwo: null }"
         result = test_dex.analyze_query(TEST_URI,
-                                        yaml.load(test_query, dex.OrderedDictYAMLLoader),
+                                        self.parser.parse(test_query),
                                         TEST_DBNAME,
                                         TEST_COLLECTION)        
         self.assertEqual(result['recommendation'], None)
         self.assertEqual(result['indexAnalysis']['fullIndexes'][0]['index']['key'], [('complexIndexedFieldOne', -1), ('complexIndexedFieldTwo', -1), ('complexIndexedFieldThree', -1)])
                 
-        test_query = "{ query: { complexUnindexedFieldOne: null, complexUnindexedFieldTwo: { $lt: 4 }}, ns: 'dex_test.test_collection'}"
+        test_query = "{ complexUnindexedFieldOne: null, complexUnindexedFieldTwo: { $lt: 4 }}"
         result = test_dex.analyze_query(TEST_URI,
-                                        yaml.load(test_query, dex.OrderedDictYAMLLoader),
+                                        self.parser.parse(test_query),
                                         TEST_DBNAME,
                                         TEST_COLLECTION)        
-        self.assertEqual(result['recommendation']['index'], "{'complexUnindexedFieldOne': 1, 'complexUnindexedFieldTwo': 1}")
+        self.assertEqual(result['recommendation']['index'], '{"complexUnindexedFieldOne": 1, "complexUnindexedFieldTwo": 1}')
         
-        test_query = "{ query: { complexIndexedFieldOne: null, complexIndexedFieldTwo: { $lt: 4 }  }, ns: 'dex_test.test_collection'}"
+        test_query = "{ complexIndexedFieldOne: null, complexIndexedFieldTwo: { $lt: 4 }  }"
         result = test_dex.analyze_query(TEST_URI,
-                                        yaml.load(test_query, dex.OrderedDictYAMLLoader),
+                                        self.parser.parse(test_query),
                                         TEST_DBNAME,
                                         TEST_COLLECTION)        
-        self.assertEqual(result['recommendation'], None, dex.pretty_json(result))
+        self.assertEqual(result['recommendation'], None, pretty_json(result))
                 
-        test_query = "{ query: { complexIndexedFieldNine: null, complexIndexedFieldTen: { $lt: 4 }  }, ns: 'dex_test.test_collection'}"
+        test_query = "{ complexIndexedFieldNine: null, complexIndexedFieldTen: { $lt: 4 }  }"
         result = test_dex.analyze_query(TEST_URI,
-                                        yaml.load(test_query, dex.OrderedDictYAMLLoader),
+                                        self.parser.parse(test_query),
                                         TEST_DBNAME,
                                         TEST_COLLECTION)        
-        self.assertEqual(result['recommendation']['index'], "{'complexIndexedFieldNine': 1, 'complexIndexedFieldTen': 1}")
+        self.assertEqual(result['recommendation']['index'], '{"complexIndexedFieldNine": 1, "complexIndexedFieldTen": 1}')
         
-        test_query = "{ query: {complexUnindexedFieldOne: null}, orderby: { complexUnindexedFieldTwo: 1 } , ns: 'dex_test.test_collection'}"
+        test_query = "{ $query: {complexUnindexedFieldOne: null}, $orderby: { complexUnindexedFieldTwo: 1 } }"
         result = test_dex.analyze_query(TEST_URI,
-                                        yaml.load(test_query, dex.OrderedDictYAMLLoader),
+                                        self.parser.parse(test_query),
                                         TEST_DBNAME,
                                         TEST_COLLECTION)        
-        self.assertEqual(result['recommendation']['index'], "{'complexUnindexedFieldOne': 1, 'complexUnindexedFieldTwo': 1}")
+        self.assertEqual(result['recommendation']['index'], '{"complexUnindexedFieldOne": 1, "complexUnindexedFieldTwo": 1}')
                 
-        test_query = "{ query: {complexIndexedFieldOne: null}, orderby: { complexIndexedFieldTwo: 1 } , ns: 'dex_test.test_collection'}"
+        test_query = "{ $query: {complexIndexedFieldOne: null}, $orderby: { complexIndexedFieldTwo: 1 } }"
         result = test_dex.analyze_query(TEST_URI,
-                                        yaml.load(test_query, dex.OrderedDictYAMLLoader),
+                                        self.parser.parse(test_query),
                                         TEST_DBNAME,
                                         TEST_COLLECTION)        
         self.assertEqual(result['recommendation'], None)
         
-        test_query = "{ query: {complexIndexedFieldTen: {$lt: 4}}, orderby: { complexIndexedFieldNine: 1 } , ns: 'dex_test.test_collection'}"
+        test_query = "{ $query: {complexIndexedFieldTen: {$lt: 4}}, $orderby: { complexIndexedFieldNine: 1 } }"
         result = test_dex.analyze_query(TEST_URI,
-                                        yaml.load(test_query, dex.OrderedDictYAMLLoader),
+                                        self.parser.parse(test_query),
                                         TEST_DBNAME,
                                         TEST_COLLECTION)        
-        self.assertEqual(result['recommendation']['index'], "{'complexIndexedFieldNine': 1, 'complexIndexedFieldTen': 1}")
+        self.assertEqual(result['recommendation']['index'], '{"complexIndexedFieldNine": 1, "complexIndexedFieldTen": 1}')
                 
-        test_query = "{ query: {complexIndexedFieldThree: null, complexIndexedFieldTwo: {$lt: 4}}, orderby: { complexIndexedFieldOne: 1 } , ns: 'dex_test.test_collection'}"
+        test_query = "{ $query: {complexIndexedFieldThree: null, complexIndexedFieldTwo: {$lt: 4}}, $orderby: { complexIndexedFieldOne: 1 }}"
         result = test_dex.analyze_query(TEST_URI,
-                                        yaml.load(test_query, dex.OrderedDictYAMLLoader),
+                                        self.parser.parse(test_query),
                                         TEST_DBNAME,
                                         TEST_COLLECTION)        
-        self.assertEqual(result['recommendation']['index'], "{'complexIndexedFieldThree': 1, 'complexIndexedFieldOne': 1, 'complexIndexedFieldTwo': 1}")
+        self.assertEqual(result['recommendation']['index'], '{"complexIndexedFieldThree": 1, "complexIndexedFieldOne": 1, "complexIndexedFieldTwo": 1}')
         
-        test_query = "{ query: {complexIndexedFieldOne: null, complexIndexedFieldThree: {$lt: 4}}, orderby: { complexIndexedFieldTwo: 1 } , ns: 'dex_test.test_collection'}"
+        test_query = "{ $query: {complexIndexedFieldOne: null, complexIndexedFieldThree: {$lt: 4}}, $orderby: { complexIndexedFieldTwo: 1 } }"
         result = test_dex.analyze_query(TEST_URI,
-                                        yaml.load(test_query, dex.OrderedDictYAMLLoader),
+                                        self.parser.parse(test_query),
                                         TEST_DBNAME,
                                         TEST_COLLECTION)        
         self.assertEqual(result['recommendation'], None)
                 
-        test_query = "{ query: { $or: [ { orFieldOne: { $lt: 4 } }, {orFieldTwo: { $gt: 5 } }], complexUnindexedFieldOne: 'A'}, orderby: { _id: 1 }, ns: 'dex_test.test_collection' }"
+        test_query = "{ $query: { $or: [ { orFieldOne: { $lt: 4 } }, {orFieldTwo: { $gt: 5 } }], complexUnindexedFieldOne: 'A'}, $orderby: { _id: 1 }}"
         result = test_dex.analyze_query(TEST_URI,
-                                        yaml.load(test_query, dex.OrderedDictYAMLLoader),
+                                        self.parser.parse(test_query),
                                         TEST_DBNAME,
                                         TEST_COLLECTION)        
         self.assertEqual(result['recommendation'], None)
         
-        test_query = "{ query: { geoIndexedFieldOne: { $near: [50, 50] } } , ns: 'dex_test.test_collection'}"
+        test_query = "{ geoIndexedFieldOne: { $near: [50, 50] } } "
         result = test_dex.analyze_query(TEST_URI,
-                                        yaml.load(test_query, dex.OrderedDictYAMLLoader),
+                                        self.parser.parse(test_query),
                                         TEST_DBNAME,
                                         TEST_COLLECTION)        
         self.assertEqual(result['recommendation'], None)
                 
     def test_generate_query_analysis(self):
-        analyzer = dex.Dex(TEST_URI, False, [], 0, True)._query_analyzer
+        analyzer = dex.Dex(TEST_URI, False, [], 0, True, 0)._query_analyzer
 
-        analysis = analyzer._generate_query_analysis(yaml.load('{query: { a: null }}', dex.OrderedDictYAMLLoader), 'db', 'collection')
+        analysis = analyzer._generate_query_analysis(self.parser.parse('{ a: null }'), 'db', 'collection')
         self.assertEqual(analysis['fieldCount'], 1)
         self.assertTrue(analysis['supported'])
         self.assertEqual(analysis['analyzedFields'][0]['fieldName'], 'a')
         self.assertEqual(analysis['analyzedFields'][0]['fieldType'], 'EQUIV')
-        analysis = analyzer._generate_query_analysis(yaml.load('{query: { a: null , b: { $lt: 4 }}}', dex.OrderedDictYAMLLoader), 'db', 'collection')
+        analysis = analyzer._generate_query_analysis(self.parser.parse('{ a: null , b: { $lt: 4 }}'), 'db', 'collection')
         self.assertEqual(analysis['fieldCount'], 2)
         self.assertTrue(analysis['supported'])
         self.assertEqual(analysis['analyzedFields'][0]['fieldName'], 'a')
         self.assertEqual(analysis['analyzedFields'][0]['fieldType'], 'EQUIV')
         self.assertEqual(analysis['analyzedFields'][1]['fieldName'], 'b')
         self.assertEqual(analysis['analyzedFields'][1]['fieldType'], 'RANGE')
-        analysis = analyzer._generate_query_analysis(yaml.load('{query: { a: null , b: { $lt: 4 }}, orderby: {c: 1}}', dex.OrderedDictYAMLLoader), 'db', 'collection')
+        analysis = analyzer._generate_query_analysis(self.parser.parse('{$query: { a: null , b: { $lt: 4 }}, $orderby: {c: 1}}'), 'db', 'collection')
         self.assertEqual(analysis['fieldCount'], 3)
         self.assertTrue(analysis['supported'])
         self.assertEqual(analysis['analyzedFields'][0]['fieldName'], 'c')
@@ -226,7 +234,7 @@ class test_dex(unittest.TestCase):
         self.assertEqual(analysis['analyzedFields'][1]['fieldType'], 'EQUIV')
         self.assertEqual(analysis['analyzedFields'][2]['fieldName'], 'b')
         self.assertEqual(analysis['analyzedFields'][2]['fieldType'], 'RANGE')
-        analysis = analyzer._generate_query_analysis(yaml.load('{query: { a: null , b: { $lt: 4 }, d: {$near: [50, 50]}}, orderby: {c: 1}}', dex.OrderedDictYAMLLoader), 'db', 'collection')
+        analysis = analyzer._generate_query_analysis(self.parser.parse('{$query: { a: null , b: { $lt: 4 }, d: {$near: [50, 50]}}, $orderby: {c: 1}}'), 'db', 'collection')
         self.assertEqual(analysis['fieldCount'], 4)
         self.assertFalse(analysis['supported'])
         self.assertEqual(analysis['analyzedFields'][0]['fieldName'], 'c')
@@ -239,7 +247,7 @@ class test_dex(unittest.TestCase):
         self.assertEqual(analysis['analyzedFields'][3]['fieldType'], 'UNSUPPORTED')
                 
     def test_generate_index_report(self):
-        analyzer = dex.Dex(TEST_URI, False, [], 0, True)._query_analyzer
+        analyzer = dex.Dex(TEST_URI, False, [], 0, True, 0)._query_analyzer
 
         index = {"key": [ ("complexIndexedFieldOne", -1), ("complexIndexedFieldTwo", -1)],
                  "v": 1}
@@ -308,74 +316,82 @@ class test_dex(unittest.TestCase):
         self.assertTrue(report['idealOrder'])
 
     def test_sort_ordering(self):
-        test_dex = dex.Dex(TEST_URI, True, [], 0, True)
+        test_dex = dex.Dex(TEST_URI, True, [], 0, True, 0)
         report = test_dex._report._reports
-        test_query = "{ query: {}, orderby: { simpleUnindexedField: null," \
-                     "simpleUnindexedFieldTwo: null  },"\
-                     "ns: 'dex_test.test_collection', 'millis': 50}"
+        test_query = "{ $query: {}, $orderby: { simpleUnindexedField: null, simpleUnindexedFieldTwo: null  }}"
         result = test_dex.analyze_query(None,
-                                        yaml.load(test_query, dex.OrderedDictYAMLLoader),
+                                        self.parser.parse(test_query),
                                         TEST_DBNAME,
                                         TEST_COLLECTION)
         self.assertEqual(result['recommendation']['index'],
-                        "{'simpleUnindexedField': 1, 'simpleUnindexedFieldTwo': 1}")
+                         '{"simpleUnindexedField": 1, "simpleUnindexedFieldTwo": 1}')
 
-        test_query = "{ query: {}, orderby: { simpleUnindexedFieldTwo: null,"\
-                     "simpleUnindexedFieldOne: null  },"\
-                     "ns: 'dex_test.test_collection', 'millis': 50}"
+        test_query = "{ $query: {}, $orderby: { simpleUnindexedFieldTwo: null, simpleUnindexedFieldOne: null  }}"
         result = test_dex.analyze_query(None,
-            yaml.load(test_query, dex.OrderedDictYAMLLoader),
-            TEST_DBNAME,
-            TEST_COLLECTION)
+                                        self.parser.parse(test_query),
+                                        TEST_DBNAME,
+                                        TEST_COLLECTION)
         self.assertEqual(result['recommendation']['index'],
-            "{'simpleUnindexedFieldTwo': 1, 'simpleUnindexedFieldOne': 1}")
+                         '{"simpleUnindexedFieldTwo": 1, "simpleUnindexedFieldOne": 1}')
 
     def test_report_aggregation(self):
-        test_dex = dex.Dex(TEST_URI, True, [], 0, True)
+        test_dex = dex.Dex(TEST_URI, True, [], 0, True, 0)
         report = test_dex._report._reports
 
-        test_query = "{ query: { simpleUnindexedField: null }, " \
-                     "ns: 'dex_test.test_collection', 'millis': 150}"
+        test_query = "{ simpleUnindexedField: null }"
         result = test_dex.analyze_query(None,
-                                        yaml.load(test_query, dex.OrderedDictYAMLLoader),
+                                        self.parser.parse(test_query),
                                         TEST_DBNAME,
                                         TEST_COLLECTION)
         test_dex._report.add_query_occurrence(result)
         self.assertEqual(len(report), 1)
-        self.assertEqual(report[0]['queryCount'], 1)
-        self.assertEqual(len(report[0]['queries']), 1)
+        self.assertEqual(report[0]['details']['count'], 1)
 
-        test_query = "{ query: {}, orderby: { simpleUnindexedField: null }," \
-                     "ns: 'dex_test.test_collection', 'millis': 50}"
+        test_query = "{ $query: {}, $orderby: { simpleUnindexedField: null }}"
         result = test_dex.analyze_query(None,
-                                        yaml.load(test_query, dex.OrderedDictYAMLLoader),
+                                        self.parser.parse(test_query),
                                         TEST_DBNAME,
                                         TEST_COLLECTION)
         test_dex._report.add_query_occurrence(result)
 
-        self.assertEqual(len(report), 1)
-        self.assertEqual(report[0]['queryCount'], 2)
-        self.assertEqual(len(report[0]['queries']), 2)
-        totalAvg = report[0]['avgTimeMillis']
-        self.assertEqual(totalAvg, 100)
+        self.assertEqual(len(report), 2)
 
-        test_query = "{ query: { anotherUnindexedField: null }, "\
-                     "ns: 'dex_test.test_collection', 'millis': 100}"
+        test_query = "{ anotherUnindexedField: null }"
         result = test_dex.analyze_query(None,
-                                        yaml.load(test_query, dex.OrderedDictYAMLLoader),
+                                        self.parser.parse(test_query),
                                         TEST_DBNAME,
                                         TEST_COLLECTION)
         #adding twice for a double query
         test_dex._report.add_query_occurrence(result)
         test_dex._report.add_query_occurrence(result)
 
-        self.assertEqual(len(report), 2)
-        self.assertEqual(report[0]['queryCount'], 2)
-        self.assertEqual(len(report[0]['queries']), 2)
-        self.assertEqual(report[1]['queryCount'], 2)
-        self.assertEqual(len(report[1]['queries']), 1)
-        totalAvg = report[0]['avgTimeMillis']
-        self.assertEqual(totalAvg, 100)
+        self.assertEqual(len(report), 3)
 
     if __name__ == '__main__':
         unittest.main()
+
+
+class TestParser(Parser):
+    def __init__(self):
+        """Declares the QueryLineHandlers to use"""
+        super(TestParser, self).__init__([self.TestHandler()])
+
+    ############################################################################
+    # Base QueryLineHandler class
+    #   Knows how to yamlfy a logline query
+    ############################################################################
+    class TestHandler(QueryLineHandler):
+        ########################################################################
+        def handle(self, input):
+            parsed = self.parse_query(input)
+            result = OrderedDict()
+            if parsed is not None:
+                scrubbed = scrub(parsed)
+                result['query'] = scrubbed['$query']
+                if '$orderby' in scrubbed:
+                    result['orderby'] = scrubbed['$orderby']
+                result['ns'] = TEST_DBNAME + "." + TEST_COLLECTION
+                result['stats'] = {}
+                result['stats']['millis'] = 500
+                result['queryMask'] = mask(scrubbed)
+                return result

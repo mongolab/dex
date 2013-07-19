@@ -27,7 +27,7 @@ import sys
 import time
 from utils import pretty_json
 from analyzer import QueryAnalyzer, ReportAggregation
-from parser import LogParser, ProfileParser
+from parsers import LogParser, ProfileParser
 from datetime import datetime
 from datetime import timedelta
 try:
@@ -82,28 +82,27 @@ class Dex:
     ############################################################################
     def _process_query(self, input, parser, run_stats):
         run_stats['linesPassed'] += 1
-        raw_query = parser.parse(input)
+        parsed = parser.parse(input)
 
-        if raw_query is not None:
+        if parsed is not None:
             run_stats['linesProcessed'] += 1
-            namespace_tuple = self._tuplefy_namespace(raw_query['ns'])
+            namespace_tuple = self._tuplefy_namespace(parsed['ns'])
             # If the query is for a requested namespace ....
-            if self._namespace_requested(raw_query['ns']):
+            if self._namespace_requested(parsed['ns']):
                 db_name = namespace_tuple[0]
                 collection_name = namespace_tuple[1]
                 query_report = None
-                if raw_query['millis'] >= self._slowms:
+                if parsed['stats']['millis'] >= self._slowms:
                     try:
                         query_report = self.analyze_query(self._db_uri,
-                                                          raw_query,
+                                                          parsed,
                                                           db_name,
                                                           collection_name)
                     except Exception as e:
                         print e.message
                         return 1
                 if query_report is not None:
-                    recommendation = query_report['recommendation']
-                    if recommendation is not None:
+                    if query_report['recommendation'] is not None:
                         run_stats['linesRecommended'] += 1
                     self._report.add_query_occurrence(query_report)
 

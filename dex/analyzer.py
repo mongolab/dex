@@ -40,7 +40,7 @@ class QueryAnalyzer:
         self._check_indexes = check_indexes
 
     ############################################################################
-    def _generate_query_occurrence(self, db_uri, parsed_query, db_name, collection_name):
+    def generate_query_report(self, db_uri, parsed_query, db_name, collection_name):
         """Generates a comprehensive report on the raw query"""
         index_analysis = None
         recommendation = None

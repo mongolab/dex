@@ -70,11 +70,10 @@ class Dex:
         self._timeout_time = None
         self._timeout = timeout
 
-
     ############################################################################
     def generate_query_report(self, db_uri, query, db_name, collection_name):
         """Analyzes a single query"""
-        return self._query_analyzer._generate_query_occurrence(db_uri,
+        return self._query_analyzer.generate_query_report(db_uri,
                                                            query,
                                                            db_name,
                                                            collection_name)

@@ -74,9 +74,9 @@ class Dex:
     def generate_query_report(self, db_uri, query, db_name, collection_name):
         """Analyzes a single query"""
         return self._query_analyzer.generate_query_report(db_uri,
-                                                           query,
-                                                           db_name,
-                                                           collection_name)
+                                                          query,
+                                                          db_name,
+                                                          collection_name)
 
     ############################################################################
     def _process_query(self, input, parser, run_stats):
@@ -94,9 +94,9 @@ class Dex:
                 if parsed['stats']['millis'] >= self._slowms:
                     try:
                         query_report = self.generate_query_report(self._db_uri,
-                                                          parsed,
-                                                          db_name,
-                                                          collection_name)
+                                                                  parsed,
+                                                                  db_name,
+                                                                  collection_name)
                     except Exception as e:
                         print e.message
                         return 1
@@ -111,7 +111,8 @@ class Dex:
         run_stats = self._get_initial_run_stats()
         profile_parser = ProfileParser()
         databases = self._get_requested_databases()
-        connection = pymongo.MongoClient(self._db_uri, document_class=OrderedDict)
+        connection = pymongo.MongoClient(self._db_uri,
+                                         document_class=OrderedDict)
 
         if databases == []:
             try:

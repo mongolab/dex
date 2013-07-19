@@ -11,7 +11,7 @@ The output of Dex
 }
 ```
 
-#dexResult.queryReport
+##dexResult.queryReport
 A report on a query uniquely identified by queryMask.
 
 ```

@@ -179,16 +179,16 @@ class StandardQueryHandler(QueryLineHandler):
         match = self._rx.match(input)
         if match is not None:
             parsed = self.parse_query(match.group('query'))
-            result = OrderedDict()
             if parsed is not None:
+                result = OrderedDict()
                 scrubbed = scrub(parsed)
                 result['query'] = scrubbed['$query']
                 if '$orderby' in scrubbed:
                     result['orderby'] = scrubbed['$orderby']
+                result['queryMask'] = mask(scrubbed)
                 result['ns'] = match.group('ns')
                 result['stats'] = self.parse_line_stats(match.group('stats'))
                 result['stats']['millis'] = match.group('query_time')
-                result['queryMask'] = mask(scrubbed)
                 return result
         return None
 
@@ -246,14 +246,21 @@ class UpdateQueryHandler(QueryLineHandler):
 
     ########################################################################
     def handle(self, input):
+
         match = self._rx.match(input)
         if match is not None:
-            query = self.parse_query(match.group('query'))
-            if query is not None:
-                query['ns'] =  match.group('ns')
-                query['millis'] = match.group('query_time')
-                query['stats'] = self.parse_line_stats(match.group('stats'))
-            return query
+            parsed = self.parse_query(match.group('query'))
+            if parsed is not None:
+                result = OrderedDict()
+                scrubbed = scrub(parsed)
+                result['query'] = scrubbed['$query']
+                if '$orderby' in scrubbed:
+                    result['orderby'] = scrubbed['$orderby']
+                result['queryMask'] = mask(scrubbed)
+                result['ns'] =  match.group('ns')
+                result['stats'] = self.parse_line_stats(match.group('stats'))
+                result['stats']['millis'] = match.group('query_time')
+                return result
         return None
 
 

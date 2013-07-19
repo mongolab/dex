@@ -270,21 +270,12 @@ class Dex:
         })
 
     ############################################################################
-    def _make_aggregated_report(self, run_stats):
-        if self._verbose:
-            results = self._report.get_aggregated_reports_verbose()
-        else:
-            results = self._report.get_aggregated_reports()
-        from operator import itemgetter
-        return {'results': sorted(results, key=lambda x: x['details']['totalTimeMillis'], reverse=True), #itemgetter('totalTimeMillis'), reverse=True),
-                'runStats': run_stats}
-
-    ############################################################################
     def _output_aggregated_report(self, out, run_stats):
-        output = self._make_aggregated_report(run_stats)
+        output = OrderedDict([('runStats', run_stats),
+                              ('results', self._report.get_reports())])
 
-        out.write(pretty_json(output))
-        #out.write(pretty_json(output).replace('"', "'").replace("\\'", '"') + "\n")
+        #out.write(pretty_json(output))
+        out.write(pretty_json(output).replace('"', "'").replace("\\'", '"') + "\n")
 
     ############################################################################
     def _tail_file(self, file, interval):

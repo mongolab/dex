@@ -28,7 +28,7 @@ def scrub_doc(d):
     for k in d:
         d[k] = scrub(d[k])
         if d[k] is None:
-            d[k] = "<" + k + ">"
+            d[k] = "<val>"
     return d
 
 

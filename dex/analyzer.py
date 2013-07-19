@@ -319,17 +319,11 @@ class ReportAggregation:
                 ('details', initial_query_detail)]))
 
     ############################################################################
-    def get_aggregated_reports_verbose(self):
-        """Returns the whole aggregation"""
-        return self._reports
-
-    ############################################################################
-    def get_aggregated_reports(self):
+    def get_reports(self):
         """Returns a minimized version of the aggregation"""
-        reports = []
-        for report in self._reports:
-            reports.append(self._get_abbreviated_report(report))
-        return reports
+        return sorted(self._reports,
+                      key=lambda x: x['details']['totalTimeMillis'],
+                      reverse=True)
 
     ############################################################################
     def _get_existing_Report(self, mask, report):
@@ -344,7 +338,6 @@ class ReportAggregation:
     def _merge_report(self, target, new):
         """Merges a new report into the target report"""
         query_millis = int(new['parsed']['millis'])
-        print pretty_json(target)
 
         target['details']['totalTimeMillis'] += query_millis
         target['details']['count'] += 1
@@ -352,18 +345,10 @@ class ReportAggregation:
 
     ############################################################################
     def _get_initial_query_detail(self, report):
+        print pretty_json(report)
         """Returns a new query query document from the report"""
         initial_millis = int(report['parsed']['millis'])
-        return OrderedDict([('count', 1), ('totalTimeMillis', initial_millis), ('avgTimeMillis', initial_millis)])
-
-    ############################################################################
-    def _get_abbreviated_report(self, report):
-        """Returns a minimum of fields from the report"""
-        return OrderedDict({
-            'namespace' : report['namespace'],
-            'index' : report['recommendation']['index'] if report['recommendation'] is not None else None,
-            'avgTimeMillis' : report['avgTimeMillis'],
-            'queryCount': report['queryCount'],
-            'totalTimeMillis': report['totalTimeMillis'],
-            'queriesCovered': report['queriesCovered']
-        })
+        detail = OrderedDict([('count', 1),
+                              ('totalTimeMillis', initial_millis),
+                              ('avgTimeMillis', initial_millis)])
+        return detail

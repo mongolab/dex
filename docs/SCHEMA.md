@@ -1,4 +1,4 @@
-# DexResult
+# dexResult
 The output of Dex
 ```
 {
@@ -11,7 +11,7 @@ The output of Dex
 }
 ```
 
-#queryReport
+#dexResult.queryReport
 A report on a query uniquely identified by queryMask.
 
 ```
@@ -19,24 +19,13 @@ A report on a query uniquely identified by queryMask.
     "queryMask": <queryOccurrence.queryMask>,
     "recommendation": <queryOccurrence.recommendation>,
     "namespace": <queryReport.namespace>,
-    "details": <aggregatedDetails>
-}
-```
-
-##queryReport.aggregatedDetails
-Aggregated details of all the occurrences of the query identified in the report. drawn from aggregating queryOccurrence.parsed
-
-```
-{
-    "query": <string>,
-    "orderby": <string>,
-    "stats": {
-        "count": <int>,
-        "totalTimeMillis": <int>,
-        "avgTimeMillis": <int>,
-        "avgNumReturned": <int>,
-        "scanAndOrder": <boolean>,
-        "avgNumScanned": <int>
+    "details": {
+       "count": <int>,
+       "totalTimeMillis": <int>,
+       "avgTimeMillis": <int>,
+       "avgNumReturned": <int>,
+       "scanAndOrder": <boolean>,
+       "avgNumScanned": <int>
     }
 }
 ```

@@ -1,3 +1,24 @@
+Future
+
+- Aggregation Framework, Geospatial, Map/Reduce
+- min/max/average nscanned and nreturned
+- scanAndOrder true/false
+- Test revision
+- Setwise optimization (group non-unique queries into fewer index recommendations)
+
+### Version 0.6 2013-7-19
+
+- Renovation of data model. See schema.md
+- -v/--verbose currently nonfunctional
+
+### Version 0.5.5 2013-5-09
+
+- Better regexes for syslog and other log handlers which prepend their own info
+- Added -s/--slowms
+- Added -t/--timeout
+Logfile mode only
+- Added --nocheck
+
 ### 0.5.1 2012-11-05
 
 - Expanded use of OrderedDicts throughout Dex and added an OrderedDict YAML

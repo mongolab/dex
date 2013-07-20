@@ -27,7 +27,7 @@ import pymongo
 import yaml
 import sys
 from dex import dex
-from dex.parsers import OrderedDictYAMLLoader, Parser, QueryLineHandler, mask, scrub
+from dex.parsers import Parser, QueryLineHandler, mask, scrub
 from dex.utils import pretty_json
 import os
 try:

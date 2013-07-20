@@ -264,7 +264,7 @@ class UpdateQueryHandler(QueryLineHandler):
                 if '$orderby' in scrubbed:
                     result['orderby'] = scrubbed['$orderby']
                 result['queryMask'] = mask(scrubbed)
-                result['ns'] =  match.group('ns')
+                result['ns'] = match.group('ns')
                 result['stats'] = self.parse_line_stats(match.group('stats'))
                 result['stats']['millis'] = match.group('query_time')
                 return result

@@ -223,12 +223,12 @@ class CmdQueryHandler(QueryLineHandler):
                 if 'count' in parsed:
                     result['ns'] = match.group('db') + '.'
                     result['ns'] += parsed['count']
-                elif 'findandmodify' in parsed:
+                elif 'findAndModify' in parsed:
                     if 'sort' in parsed:
                         result['orderby'] = parsed['sort']
                         toMask['$orderby'] = parsed['sort']
                     result['ns'] = match.group('db') + '.'
-                    result['ns'] += parsed['findandmodify']
+                    result['ns'] += parsed['findAndModify']
                 else:
                     return None
 

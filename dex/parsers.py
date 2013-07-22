@@ -28,9 +28,10 @@ def scrub(e):
 
 def scrub_doc(d):
     for k in d:
-        d[k] = scrub(d[k])
-        if d[k] is None:
-            d[k] = "<val>"
+        if k != '$orderby':
+            d[k] = scrub(d[k])
+            if d[k] is None:
+                d[k] = "<val>"
     return d
 
 
@@ -81,38 +82,45 @@ class ProfileParser(Parser):
     class ProfileEntryHandler:
         ########################################################################
         def handle(self, input):
-            raw_query = OrderedDict({})
-            if ((input is not None) and
-                    (input.has_key('op'))):
-                if input['op'] == 'insert':
-                    return None
-                elif input['op'] == 'query':
+            result = OrderedDict()
+            query = None
+            orderby = None
+
+            if (input is not None) and (input.has_key('op')):
+                if input['op'] == 'query':
                     if input['query'].has_key('$query'):
-                        raw_query['query'] = input['query']['$query']
+                        query = input['query']['$query']
                         if input['query'].has_key('$orderby'):
                             orderby = input['query']['$orderby']
-                            raw_query['orderby'] = orderby
                     else:
-                        raw_query['query'] = input['query']
-                    raw_query['millis'] = input['millis']
-                    raw_query['ns'] = input['ns']
-                    return raw_query
+                        query = input['query']
+                    result['ns'] = input['ns']
                 elif input['op'] == 'update':
-                    raw_query['query'] = input['query']
+                    query = input['query']
                     if input.has_key('updateobj'):
                         if input['updateobj'].has_key('orderby'):
                             orderby = input['updateobj']['orderby']
-                            raw_query['orderby'] = orderby
-                    raw_query['millis'] = input['millis']
-                    raw_query['ns'] = input['ns']
-                    return raw_query
+                    result['ns'] = input['ns']
                 elif ((input['op'] == 'command') and
-                      (input['command'].has_key('count'))):
-                    raw_query = { 'query': input['command']['query'] }
+                      ((input['command'].has_key('count')) or
+                       (input['command'].has_key('findAndModify')))):
+                    query = input['command']['query']
                     db = input['ns'][0:input['ns'].rfind('.')]
-                    raw_query['millis'] = input['millis']
-                    raw_query['ns'] = db + "." + input['command']['count']
-                    return raw_query
+                    result['ns'] = db + "." + input['command']['count']
+                else:
+                    return None
+
+                toMask = OrderedDict()
+
+                if orderby is not None:
+                    result['orderby'] = orderby
+                    toMask['$orderby'] = orderby
+                result['query'] = scrub(query)
+                toMask['$query'] = query
+
+                result['queryMask'] = mask(toMask)
+                result['stats'] = {'millis': input['millis']}
+                return result
             else:
                 return None
 

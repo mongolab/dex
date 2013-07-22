@@ -192,189 +192,124 @@ will use create the dex_test db and drop it when the tests are complete.
 Output
 --------
 
-### Default
-Dex provides information and statistics for each unique recommendation. A
-recommendation includes:
-* index - The index recommended.
-* queryCount - The total number of queries that will benefit from the
-recommendation.
-* namespace - The MongoDB namespace in which to create the index,
-in the form "db.collection"
-* totalTimeMillis - The sum amount of time consumed by all of the queries
-that prompted the recommendation.
-* avgTimeMillis - The average time each query currently takes.
-* queries - An array of query patterns addressed by the recommendation,
-with values masked (q for query component, s for sort component).
-
-For each run, Dex also provides a brief set of run stats:
+For each run, Dex provides a brief set of run stats:
 * linesPassed - The number of entries (log or profile) sent to Dex.
 * linesProcessed - The number of entries from which Dex successfully
 extracted queries.
 * linesRecommended - The number of lines that prompted an index recommendation.
 * timedOut - True if the Dex operation times out per the -t/--timeout flag.
 * timeoutInMinutes - If timedOut is true, this contains the time.
+Dex provides information and statistics for each unique query in the form of a. A
+recommendation includes:
+* results - A list of query reports including index recommendations.
 
-#### Watch Mode Output to STDERR
+#### Full Output to STDOUT
 
-Dex provides runtime output during watch (-w) mode. Every 30 seconds,
-the full list of recommendations is printed with updated statistics.
+Dex returns an array of JSON documents. Each is a query report for a unique
+query, as identified by 'queryMask'. Each report includes:
 
-Default Output Sample:
-```
-{
-    'runStats': {
-        'linesRecommended': 6482,
-        'linesProcessed': 6482,
-        'linesPassed': 6759
-    },
-    'results': [
-        {
-            'index': '{"classes": 1, "name": 1, "level": 1}',
-            'totalTimeMillis': 441459,
-            'namespace': 'mongoquest.adventurers',
-            'queryCount': 2161,
-            'avgTimeMillis': 204,
-            'queries': [
-                '{"q": {"classes": "<classes>", "name": "<name>", "level": "<level>"}}'
-            ]
-        },
-        {
-            'index': '{"name": 1, "classes": 1, "level": 1}',
-            'totalTimeMillis': 441324,
-            'namespace': 'mongoquest.adventurers',
-            'queryCount': 2160,
-            'avgTimeMillis': 204,
-            'queries': [
-                '{"q": {"name": "<name>"}, "s": {"classes": "<sort-order>", "level": "<sort-order>"}}'
-            ]
-        },
-        {
-            'index': '{"name": 1}',
-            'totalTimeMillis': 410041,
-            'namespace': 'mongoquest.adventurers',
-            'queryCount': 2161,
-            'avgTimeMillis': 189,
-            'queries': [
-                '{"q": {"name": "<name>"}}'
-            ]
-        }
-    ]
-}
-```
-
-#### Final Output to STDOUT
-
-Dex returns an array of JSON documents containing each unique recommendation.
-
-NOTE: Dex no longer provides runtime output in default mode (no -w)
-
-#### Verbose Output
-When -v/--verbose is specified, Dex provides additional information for
-each recommendation, including:
-
+* queryMask - The query pattern, with values masked ($query for query component,
+ $orderby for sort component)
 * namespace - The MongoDB namespace in which to create the index,
 in the form "db.collection"
-* queryCount - The total number of queries that will benefit from the
-recommendation.
-* avgTimeMillis - The average time each query currently takes.
-* totalTimeMillis - The sum amount of time consumed by all of the queries that
-prompted the recommendation.
+* details - specific query details aggregated from each query occurrence.
+* details.count - The total number of queries that occurred.
+* details.avgTimeMillis - The average time this query currently takes.
+* details.totalTimeMillis - The sum amount of time consumed by all of the queries that
+match the queryMask.
 * recommendation - A fully-formed recommendation object.
  * recommendation.index - The index recommended.
  * recommendation.namespace - The recommendation namespace.
  * recommendation.shellCommand - A helpful string for creating the index in
 the MongoDB shell.
-* queries - An array of query patterns addressed by the recommendation,
-with values masked (q for query component, s for sort component).
-* queryDetails - An array of statistics for each unique query pattern (see queries)
- * queryMask - The query pattern, with values masked (q for query component,
- s for sort component)
- * queryCount - The total number of queries matching the query
- pattern.
- * avgTimeMillis - The average time each query with the pattern
-takes.
- * totalTimeMillis - The sum amount of time consumed by all of
- the queries of that pattern.
 
-Verbose Sample:
+Sample:
 ```
 {
     'runStats': {
-        'linesRecommended': 6482,
-        'linesProcessed': 6482,
-        'linesPassed': 6761
+        'linesRecommended': 12,
+        'linesProcessed': 16,
+        'linesPassed': 22
     },
     'results': [
         {
-            'totalTimeMillis': 441459,
-            'queries': [
-                '{"q": {"classes": "<classes>", "name": "<name>", "level": "<level>"}}'
-            ],
+            'queryMask': '{"$orderby":{"classes":1,"level":1},"$query":{"classes":"<val>","level":{"$gte":"<val>"},"name":"<val>"}}',
             'namespace': 'mongoquest.adventurers',
-            'queryCount': 2161,
-            'avgTimeMillis': 204,
-            'recommendation': {
-                'index': '{"classes": 1, "name": 1, "level": 1}',
-                'namespace': 'mongoquest.adventurers',
-                'shellCommand': 'db["adventurers"].ensureIndex({"classes": 1, "name": 1, "level": 1}, {"background": true})'
-            },
-            'queryDetails': [
-                {
-                    'avgTimeMillis': 204,
-                    'queryCount': 2161,
-                    'totalTimeMillis': 441459,
-                    'queryMask': '{"q": {"classes": "<classes>", "name": "<name>", "level": "<level>"}}'
-                }
-            ]
-        },
-        {
-            'totalTimeMillis': 441324,
-            'queries': [
-                '{"q": {"name": "<name>"}, "s": {"classes": "<sort-order>", "level": "<sort-order>"}}'
-            ],
-            'namespace': 'mongoquest.adventurers',
-            'queryCount': 2160,
-            'avgTimeMillis': 204,
             'recommendation': {
                 'index': '{"name": 1, "classes": 1, "level": 1}',
                 'namespace': 'mongoquest.adventurers',
                 'shellCommand': 'db["adventurers"].ensureIndex({"name": 1, "classes": 1, "level": 1}, {"background": true})'
             },
-            'queryDetails': [
-                {
-                    'avgTimeMillis': 204,
-                    'queryCount': 2160,
-                    'totalTimeMillis': 441324,
-                    'queryMask': '{"q": {"name": "<name>"}, "s": {"classes": "<sort-order>", "level": "<sort-order>"}}'
-                }
-            ]
+            'details': {
+                'count': 4,
+                'totalTimeMillis': 809,
+                'avgTimeMillis': 202
+            }
         },
         {
-            'totalTimeMillis': 410041,
-            'queries': [
-                '{"q": {"name": "<name>"}}'
-            ],
+            'queryMask': '{"$query":{"name":"<val>"}}',
             'namespace': 'mongoquest.adventurers',
-            'queryCount': 2161,
-            'avgTimeMillis': 189,
             'recommendation': {
                 'index': '{"name": 1}',
                 'namespace': 'mongoquest.adventurers',
                 'shellCommand': 'db["adventurers"].ensureIndex({"name": 1}, {"background": true})'
             },
-            'queryDetails': [
-                {
-                    'avgTimeMillis': 189,
-                    'queryCount': 2161,
-                    'totalTimeMillis': 410041,
-                    'queryMask': '{"q": {"name": "<name>"}}'
-                }
-            ]
+            'details': {
+                'count': 2,
+                'totalTimeMillis': 476,
+                'avgTimeMillis': 238
+            }
+        },
+        {
+            'queryMask': '{"$query":{"classes":"<val>"}}',
+            'namespace': 'mongoquest.adventurers',
+            'recommendation': {
+                'index': '{"classes": 1}',
+                'namespace': 'mongoquest.adventurers',
+                'shellCommand': 'db["adventurers"].ensureIndex({"classes": 1}, {"background": true})'
+            },
+            'details': {
+                'count': 2,
+                'totalTimeMillis': 438,
+                'avgTimeMillis': 219
+            }
+        },
+        {
+            'queryMask': '{"$orderby":{"classes":1,"level":1},"$query":{"classes":"<val>","level":"<val>","name":"<val>"}}',
+            'namespace': 'mongoquest.adventurers',
+            'recommendation': {
+                'index': '{"name": 1, "classes": 1, "level": 1}',
+                'namespace': 'mongoquest.adventurers',
+                'shellCommand': 'db["adventurers"].ensureIndex({"name": 1, "classes": 1, "level": 1}, {"background": true})'
+            },
+            'details': {
+                'count': 2,
+                'totalTimeMillis': 401,
+                'avgTimeMillis': 200
+            }
+        },
+        {
+            'queryMask': '{"$query":{"level":{"$gte":"<val>"}}}',
+            'namespace': 'mongoquest.adventurers',
+            'recommendation': {
+                'index': '{"level": 1}',
+                'namespace': 'mongoquest.adventurers',
+                'shellCommand': 'db["adventurers"].ensureIndex({"level": 1}, {"background": true})'
+            },
+            'details': {
+                'count': 2,
+                'totalTimeMillis': 326,
+                'avgTimeMillis': 163
+            }
         }
     ]
 }
 ```
 
+#### Watch Mode Output to STDERR
+
+Dex provides runtime output during watch (-w) mode. Every 30 seconds,
+the full list of recommendations is printed with updated statistics.
 
 ### Questions?
 

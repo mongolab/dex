@@ -157,8 +157,7 @@ Options:
                         checkingthe specified database to see if they exist.
                         This meansDex may recommend an index that's already
                         been created
-  -v, --verbose         enables provision of additional output information,
-                        including Dex's query and index analysis structures.
+  -v, --verbose         enables provision of additional output information.
 ```
 
 Requirements
@@ -192,21 +191,22 @@ will use create the dex_test db and drop it when the tests are complete.
 Output
 --------
 
-For each run, Dex provides a brief set of run stats:
-* linesPassed - The number of entries (log or profile) sent to Dex.
-* linesProcessed - The number of entries from which Dex successfully
+For each run, Dex provides:
+* runStats - statistics for the parsed log or profile
+** runStats.linesPassed - The number of entries (log or profile) sent to Dex.
+** runStats.linesProcessed - The number of entries from which Dex successfully
 extracted queries.
-* linesRecommended - The number of lines that prompted an index recommendation.
-* timedOut - True if the Dex operation times out per the -t/--timeout flag.
-* timeoutInMinutes - If timedOut is true, this contains the time.
+** runStats.linesRecommended - The number of lines that prompted an index recommendation.
+** runStats.timedOut - True if the Dex operation times out per the -t/--timeout flag.
+** runStats.timeoutInMinutes - If timedOut is true, this contains the time.
 Dex provides information and statistics for each unique query in the form of a. A
 recommendation includes:
 * results - A list of query reports including index recommendations.
 
-#### Full Output to STDOUT
+#### Results Output to STDOUT
 
-Dex returns an array of JSON documents. Each is a query report for a unique
-query, as identified by 'queryMask'. Each report includes:
+Dex returns an array of query reports as results. Each query report is for a unique
+query as identified by 'queryMask'. Each report includes:
 
 * queryMask - The query pattern, with values masked ($query for query component,
  $orderby for sort component)

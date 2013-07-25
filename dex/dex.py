@@ -69,6 +69,7 @@ class Dex:
         self._start_time = None
         self._timeout_time = None
         self._timeout = timeout
+        self._run_stats = self._get_initial_run_stats()
 
     ############################################################################
     def generate_query_report(self, db_uri, query, db_name, collection_name):
@@ -79,12 +80,12 @@ class Dex:
                                                           collection_name)
 
     ############################################################################
-    def _process_query(self, input, parser, run_stats):
-        run_stats['linesPassed'] += 1
+    def _process_query(self, input, parser):
+        self._run_stats['linesPassed'] += 1
         parsed = parser.parse(input)
 
         if parsed is not None:
-            run_stats['linesProcessed'] += 1
+            self._run_stats['linesProcessed'] += 1
             namespace_tuple = self._tuplefy_namespace(parsed['ns'])
             # If the query is for a requested namespace ....
             if self._namespace_requested(parsed['ns']):
@@ -102,7 +103,7 @@ class Dex:
                         return 1
                 if query_report is not None:
                     if query_report['recommendation'] is not None:
-                        run_stats['linesRecommended'] += 1
+                        self._run_stats['linesRecommended'] += 1
                         self._report.add_query_occurrence(query_report)
 
     ############################################################################
@@ -136,17 +137,15 @@ class Dex:
 
             for profile_entry in profile_entries:
                 self._process_query(profile_entry,
-                                    profile_parser,
-                                    run_stats)
+                                    profile_parser)
 
-        self._output_aggregated_report(sys.stdout, run_stats)
+        self._output_aggregated_report(sys.stdout)
 
         return 0
 
     ############################################################################
     def watch_profile(self):
         """Analyzes queries from a given log file"""
-        run_stats = self._get_initial_run_stats()
         profile_parser = ProfileParser()
         databases = self._get_requested_databases()
         connection = pymongo.MongoClient(self._db_uri,document_class=OrderedDict)
@@ -187,15 +186,14 @@ class Dex:
         try:
             for profile_entry in self._tail_profile(db, WATCH_INTERVAL_SECONDS):
                 self._process_query(profile_entry,
-                                    profile_parser,
-                                    run_stats)
+                                    profile_parser)
                 if time.time() >= output_time:
-                    self._output_aggregated_report(sys.stderr, run_stats)
+                    self._output_aggregated_report(sys.stderr)
                     output_time = time.time() + WATCH_DISPLAY_REFRESH_SECONDS
         except KeyboardInterrupt:
             sys.stderr.write("Interrupt received\n")
         finally:
-            self._output_aggregated_report(sys.stdout, run_stats)
+            self._output_aggregated_report(sys.stdout)
             if initial_profile_level is pymongo.OFF:
                 message = "Dex is resetting profile level to initial value " \
                           +         "of 0. You may wish to drop the system.profile " \
@@ -216,7 +214,6 @@ class Dex:
     ############################################################################
     def analyze_logfile_object(self, file_object):
         """Analyzes queries from a given log file"""
-        run_stats = self._get_initial_run_stats()
         log_parser = LogParser()
 
         if self._start_time is None:
@@ -229,18 +226,17 @@ class Dex:
         # For each line in the logfile ...
         for line in file_object:
             if self._end_time is not None and datetime.now() > self._end_time:
-                run_stats['timedOut'] = True
-                run_stats['timeoutInMinutes'] = self._timeout
+                self._run_stats['timedOut'] = True
+                self._run_stats['timeoutInMinutes'] = self._timeout
                 break
-            self._process_query(line, log_parser, run_stats)
-        self._output_aggregated_report(sys.stdout, run_stats)
+            self._process_query(line, log_parser)
+        self._output_aggregated_report(sys.stdout)
 
         return 0
 
     ############################################################################
     def watch_logfile(self, logfile_path):
         """Analyzes queries from the tail of a given log file"""
-        run_stats = self._get_initial_run_stats()
         log_parser = LogParser()
 
         # For each new line in the logfile ...
@@ -248,14 +244,14 @@ class Dex:
         try:
             for line in self._tail_file(open(logfile_path),
                                         WATCH_INTERVAL_SECONDS):
-                self._process_query(line, log_parser, run_stats)
+                self._process_query(line, log_parser)
                 if time.time() >= output_time:
-                    self._output_aggregated_report(sys.stderr, run_stats)
+                    self._output_aggregated_report(sys.stderr)
                     output_time = time.time() + WATCH_DISPLAY_REFRESH_SECONDS
         except KeyboardInterrupt:
             sys.stderr.write("Interrupt received\n")
         finally:
-            self._output_aggregated_report(sys.stdout, run_stats)
+            self._output_aggregated_report(sys.stdout)
 
         return 0
 
@@ -269,12 +265,14 @@ class Dex:
         })
 
     ############################################################################
-    def _output_aggregated_report(self, out, run_stats):
-        output = OrderedDict([('runStats', run_stats),
+    def _make_aggregated_report(self):
+        output = OrderedDict([('runStats', self._run_stats),
                               ('results', self._report.get_reports())])
+        return output
 
-        #out.write(pretty_json(output))
-        out.write(pretty_json(output).replace('"', "'").replace("\\'", '"') + "\n")
+    ############################################################################
+    def _output_aggregated_report(self, out):
+        out.write(pretty_json(self._make_aggregated_report()).replace('"', "'").replace("\\'", '"') + "\n")
 
     ############################################################################
     def _tail_file(self, file, interval):

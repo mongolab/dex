@@ -24,6 +24,8 @@ Your index field order should first answer:
 Note that your data cardinality may warrant a different order than the suggested
 indexes.
 
+Windows not supported.
+
 Usage
 --------
 

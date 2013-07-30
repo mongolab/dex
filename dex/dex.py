@@ -39,7 +39,7 @@ except ImportError:
 # Configuration
 ################################################################################
 
-IGNORE_DBS = [  'local', 'admin']
+IGNORE_DBS = ['local', 'admin']
 IGNORE_COLLECTIONS = [u'system.namespaces',
                       u'system.profile',
                       u'system.users',
@@ -70,6 +70,7 @@ class Dex:
         self._timeout_time = None
         self._timeout = timeout
         self._run_stats = self._get_initial_run_stats()
+        self._first_line = True
 
     ############################################################################
     def generate_query_report(self, db_uri, query, db_name, collection_name):
@@ -81,11 +82,21 @@ class Dex:
 
     ############################################################################
     def _process_query(self, input, parser):
-        self._run_stats['linesPassed'] += 1
+        self._run_stats['linesRead'] += 1
+
+        line_time = parser.get_line_time(input)
+
+        if ((self._run_stats['timeRange']['start'] is None) or
+            (self._run_stats['timeRange']['start'] > line_time)):
+            self._run_stats['timeRange']['start'] = line_time
+        if ((self._run_stats['timeRange']['end'] is None) or
+            (self._run_stats['timeRange']['end'] < line_time)):
+            self._run_stats['timeRange']['end'] = line_time
+
         parsed = parser.parse(input)
 
         if parsed is not None:
-            self._run_stats['linesProcessed'] += 1
+            self._run_stats['linesAnalyzed'] += 1
             namespace_tuple = self._tuplefy_namespace(parsed['ns'])
             # If the query is for a requested namespace ....
             if self._namespace_requested(parsed['ns']):
@@ -103,13 +114,12 @@ class Dex:
                         return 1
                 if query_report is not None:
                     if query_report['recommendation'] is not None:
-                        self._run_stats['linesRecommended'] += 1
+                        self._run_stats['linesWithRecommendations'] += 1
                         self._report.add_query_occurrence(query_report)
 
     ############################################################################
     def analyze_profile(self):
         """Analyzes queries from a given log file"""
-        run_stats = self._get_initial_run_stats()
         profile_parser = ProfileParser()
         databases = self._get_requested_databases()
         connection = pymongo.MongoClient(self._db_uri,
@@ -206,8 +216,8 @@ class Dex:
     ############################################################################
     def analyze_logfile(self, logfile_path):
         """Analyzes queries from a given log file"""
-        with open(logfile_path) as file:
-            self.analyze_logfile_object(file)
+        with open(logfile_path) as obj:
+            self.analyze_logfile_object(obj)
 
         return 0
 
@@ -242,9 +252,13 @@ class Dex:
         # For each new line in the logfile ...
         output_time = time.time() + WATCH_DISPLAY_REFRESH_SECONDS
         try:
+            firstLine = True
             for line in self._tail_file(open(logfile_path),
                                         WATCH_INTERVAL_SECONDS):
+                if firstLine:
+                    self._run_stats['timeRange']['start'] = log_parser.get_line_time(line)
                 self._process_query(line, log_parser)
+                self._run_stats['timeRange']['end'] = log_parser.get_line_time(line)
                 if time.time() >= output_time:
                     self._output_aggregated_report(sys.stderr)
                     output_time = time.time() + WATCH_DISPLAY_REFRESH_SECONDS
@@ -258,11 +272,11 @@ class Dex:
     ############################################################################
     def _get_initial_run_stats(self):
         """Singlesource for initializing an output dict"""
-        return OrderedDict({
-            'linesRecommended': 0,
-            'linesProcessed': 0,
-            'linesPassed': 0
-        })
+        return OrderedDict([('linesWithRecommendations', 0),
+                            ('linesAnalyzed', 0),
+                            ('linesRead', 0),
+                            ('timeRange', OrderedDict([('start', None),
+                                                       ('end', None)]))])
 
     ############################################################################
     def _make_aggregated_report(self):
@@ -272,7 +286,7 @@ class Dex:
 
     ############################################################################
     def _output_aggregated_report(self, out):
-        out.write(pretty_json(self._make_aggregated_report()).replace('"', "'").replace("\\'", '"') + "\n")
+        out.write(pretty_json(self._make_aggregated_report())) #.replace('"', "'").replace("\\'", '"') + "\n")
 
     ############################################################################
     def _tail_file(self, file, interval):

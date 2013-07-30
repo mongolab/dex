@@ -2,6 +2,8 @@ __author__ = 'eric'
 
 import re
 from utils import pretty_json, small_json, yamlfy
+from time import strptime, mktime
+from datetime import datetime
 import traceback
 
 try:
@@ -65,6 +67,9 @@ class Parser(object):
                     return query
         return None
 
+    def get_line_time(self, input):
+        return None
+
 
 ################################################################################
 # ProfileParser
@@ -74,6 +79,9 @@ class ProfileParser(Parser):
     def __init__(self):
         """Declares the QueryLineHandlers to use"""
         super(ProfileParser, self).__init__([self.ProfileEntryHandler()])
+
+    def get_line_time(self, input):
+        return input['ts']
 
     ############################################################################
     # Base ProfileEntryHandler class
@@ -135,6 +143,17 @@ class LogParser(Parser):
         super(LogParser, self).__init__([StandardQueryHandler(),
                                          CmdQueryHandler(),
                                          UpdateQueryHandler()])
+        self._ts_rx = re.compile('^(?P<ts>[a-zA-Z]{3} [a-zA-Z]{3} {1,2}\d+ \d{2}:\d{2}:\d{2}).*')
+
+    def get_line_time(self, line):
+        match = self._ts_rx.match(line)
+        if match:                        #Tue Jul 30 12:56:41'
+
+            year = datetime.utcnow().year
+            timestamp = mktime(strptime(match.group('ts') + ' ' + str(year), '%a %b %d %H:%M:%S %Y'))
+            ts = datetime.utcfromtimestamp(timestamp)
+        return ts
+
 
 
 ############################################################################

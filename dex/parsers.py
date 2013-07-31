@@ -151,7 +151,7 @@ class LogParser(Parser):
 
             year = datetime.utcnow().year
             timestamp = mktime(strptime(match.group('ts') + ' ' + str(year), '%a %b %d %H:%M:%S %Y'))
-            ts = datetime.utcfromtimestamp(timestamp)
+            ts = datetime.fromtimestamp(timestamp)
         return ts
 
 

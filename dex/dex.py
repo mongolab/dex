@@ -286,7 +286,7 @@ class Dex:
 
     ############################################################################
     def _output_aggregated_report(self, out):
-        out.write(pretty_json(self._make_aggregated_report())) #.replace('"', "'").replace("\\'", '"') + "\n")
+        out.write(pretty_json(self._make_aggregated_report()).replace('"', "'").replace("\\'", '"') + "\n")
 
     ############################################################################
     def _tail_file(self, file, interval):

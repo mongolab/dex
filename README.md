@@ -195,12 +195,13 @@ Output
 
 For each run, Dex provides:
 * runStats - statistics for the parsed log or profile
-** runStats.linesPassed - The number of entries (log or profile) sent to Dex.
-** runStats.linesProcessed - The number of entries from which Dex successfully
-extracted queries.
-** runStats.linesRecommended - The number of lines that prompted an index recommendation.
-** runStats.timedOut - True if the Dex operation times out per the -t/--timeout flag.
-** runStats.timeoutInMinutes - If timedOut is true, this contains the time.
+ * runStats.linesRead - The number of entries (log or profile) sent to Dex.
+ * runStats.linesAnalyzed - The number of entries from which Dex successfully
+extracted queries and attempted recommendations.
+ * runStats.linesWithRecommendations - The number of lines that prompted and could potentially benefit from an index recommendation.
+ * runStats.timeRange - The range of times passed to Dex. Includes all lines read.
+ * runStats.timedOut - True if the Dex operation times out per the -t/--timeout flag.
+ * runStats.timeoutInMinutes - If timedOut is true, this contains the time.
 Dex provides information and statistics for each unique query in the form of a. A
 recommendation includes:
 * results - A list of query reports including index recommendations.
@@ -210,8 +211,7 @@ recommendation includes:
 Dex returns an array of query reports as results. Each query report is for a unique
 query as identified by 'queryMask'. Each report includes:
 
-* queryMask - The query pattern, with values masked ($query for query component,
- $orderby for sort component)
+* queryMask - The query pattern, with values masked ($query for query component, $orderby for sort component)
 * namespace - The MongoDB namespace in which to create the index,
 in the form "db.collection"
 * details - specific query details aggregated from each query occurrence.
@@ -229,9 +229,17 @@ Sample:
 ```
 {
     'runStats': {
-        'linesRecommended': 12,
-        'linesProcessed': 16,
-        'linesPassed': 22
+        'linesWithRecommendations': 12,
+        'linesAnalyzed': 16,
+        'linesRead': 22,
+        'timeRange': {
+                        'start': {
+                            '$date': 1375167617000
+                        },
+                        'end': {
+                            '$date': 1375227086000
+                        }
+                    }
     },
     'results': [
         {

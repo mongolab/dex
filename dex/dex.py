@@ -86,12 +86,13 @@ class Dex:
 
         line_time = parser.get_line_time(input)
 
-        if ((self._run_stats['timeRange']['start'] is None) or
-            (self._run_stats['timeRange']['start'] > line_time)):
-            self._run_stats['timeRange']['start'] = line_time
-        if ((self._run_stats['timeRange']['end'] is None) or
-            (self._run_stats['timeRange']['end'] < line_time)):
-            self._run_stats['timeRange']['end'] = line_time
+        if line_time is not None:
+            if ((self._run_stats['timeRange']['start'] is None) or
+                (self._run_stats['timeRange']['start'] > line_time)):
+                self._run_stats['timeRange']['start'] = line_time
+            if ((self._run_stats['timeRange']['end'] is None) or
+                (self._run_stats['timeRange']['end'] < line_time)):
+                self._run_stats['timeRange']['end'] = line_time
 
         parsed = parser.parse(input)
 

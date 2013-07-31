@@ -81,7 +81,7 @@ class ProfileParser(Parser):
         super(ProfileParser, self).__init__([self.ProfileEntryHandler()])
 
     def get_line_time(self, input):
-        return input['ts']
+        return input['ts'] if 'ts' in input else None
 
     ############################################################################
     # Base ProfileEntryHandler class
@@ -146,6 +146,7 @@ class LogParser(Parser):
         self._ts_rx = re.compile('^(?P<ts>[a-zA-Z]{3} [a-zA-Z]{3} {1,2}\d+ \d{2}:\d{2}:\d{2}).*')
 
     def get_line_time(self, line):
+        ts = None
         match = self._ts_rx.match(line)
         if match:                        #Tue Jul 30 12:56:41'
 

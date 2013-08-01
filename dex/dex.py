@@ -216,6 +216,7 @@ class Dex:
 
     ############################################################################
     def analyze_logfile(self, logfile_path):
+        self._run_stats['logSource'] = logfile_path
         """Analyzes queries from a given log file"""
         with open(logfile_path) as obj:
             self.analyze_logfile_object(obj)
@@ -248,6 +249,7 @@ class Dex:
     ############################################################################
     def watch_logfile(self, logfile_path):
         """Analyzes queries from the tail of a given log file"""
+        self._run_stats['logSource'] = logfile_path
         log_parser = LogParser()
 
         # For each new line in the logfile ...
@@ -276,6 +278,8 @@ class Dex:
         return OrderedDict([('linesWithRecommendations', 0),
                             ('linesAnalyzed', 0),
                             ('linesRead', 0),
+                            ('dexTime', datetime.now()),
+                            ('logSource', None),
                             ('timeRange', OrderedDict([('start', None),
                                                        ('end', None)]))])
 

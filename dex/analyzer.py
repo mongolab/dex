@@ -252,34 +252,34 @@ class QueryAnalyzer:
                                  db_name,
                                  collection_name):
         """Generates an ideal query recommendation"""
-        index_json = '{'
+        index_rec = '{'
         for query_field in query_analysis['analyzedFields']:
             if query_field['fieldType'] is EQUIV_TYPE:
-                if len(index_json) is not 1:
-                    index_json += ', '
-                index_json += '"' + query_field['fieldName'] + '": 1'
+                if len(index_rec) is not 1:
+                    index_rec += ', '
+                index_rec += '"' + query_field['fieldName'] + '": 1'
         for query_field in query_analysis['analyzedFields']:
             if query_field['fieldType'] is SORT_TYPE:
-                if len(index_json) is not 1:
-                    index_json += ', '
-                index_json += '"' + query_field['fieldName'] + '": 1'
+                if len(index_rec) is not 1:
+                    index_rec += ', '
+                index_rec += '"' + query_field['fieldName'] + '": 1'
         for query_field in query_analysis['analyzedFields']:
             if query_field['fieldType'] is RANGE_TYPE:
-                if len(index_json) is not 1:
-                    index_json += ', '
-                index_json += '"' + query_field['fieldName'] + '": 1'
-        index_json += '}'
-
-        command_string = 'db["' + collection_name + '"].ensureIndex('
-        command_string += index_json + ', '
-        command_string += '{"background": ' + BACKGROUND_FLAG + '})'
+                if len(index_rec) is not 1:
+                    index_rec += ', '
+                index_rec += '"' + query_field['fieldName'] + '": 1'
+        index_rec += '}'
 
         # RECOMMENDATION
-        return OrderedDict({
-            'namespace': db_name + '.' + collection_name,
-            'index': index_json,
-            'shellCommand': command_string
-        })
+        return OrderedDict([('index',index_rec),
+                            ('shellCommand', self.generate_shell_command(collection_name, index_rec))])
+
+    ############################################################################
+    def generate_shell_command(self, collection_name, index_rec):
+        command_string = 'db["' + collection_name + '"].ensureIndex('
+        command_string += index_rec + ', '
+        command_string += '{"background": ' + BACKGROUND_FLAG + '})'
+        return command_string
 
     ############################################################################
     def get_cache(self):

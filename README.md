@@ -199,6 +199,8 @@ For each run, Dex provides:
  * runStats.linesAnalyzed - The number of entries from which Dex successfully
 extracted queries and attempted recommendations.
  * runStats.linesWithRecommendations - The number of lines that prompted and could potentially benefit from an index recommendation.
+ * runStats.dexTime - The time Dex was initiated.
+ * runStats.logSource - Path to logfile processed. Null for -p/--profile mode.
  * runStats.timeRange - The range of times passed to Dex. Includes all lines read.
  * runStats.timedOut - True if the Dex operation times out per the -t/--timeout flag.
  * runStats.timeoutInMinutes - If timedOut is true, this contains the time.

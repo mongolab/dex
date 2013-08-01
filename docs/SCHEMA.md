@@ -3,9 +3,15 @@ The output of Dex
 ```
 {
   "runStats": {
-    "linesProcessed": <int>,
-    "linesPassed": <int>,
-    "linesRecommended": <int>
+    "linesRead": <int>,
+    "linesAnalyzed": <int>,
+    "linesWithRecommendations": <int>,
+    "dexTime": <datetime>,
+    "logSource": <string>,
+    "timeRange": {
+        "start": <datetime>,
+        "end": <datetime>
+      }
     },
   "results": [<queryReport>,...]
 }

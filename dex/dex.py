@@ -278,7 +278,7 @@ class Dex:
         return OrderedDict([('linesWithRecommendations', 0),
                             ('linesAnalyzed', 0),
                             ('linesRead', 0),
-                            ('dexTime', datetime.now()),
+                            ('dexTime', datetime.utcnow()),
                             ('logSource', None),
                             ('timeRange', OrderedDict([('start', None),
                                                        ('end', None)]))])

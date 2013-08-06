@@ -4,6 +4,7 @@ import json
 from bson import json_util
 import yaml
 import yaml.constructor
+from datetime import datetime, date
 
 try:
     from collections import OrderedDict
@@ -14,7 +15,14 @@ except ImportError:
 # Utilities
 ################################################################################
 def pretty_json(obj):
-    return json.dumps(obj, indent=4, default=json_util.default)
+    return json.dumps(obj, indent=4, default=_custom_json_hook)
+
+def _custom_json_hook(obj):
+    if type(obj) in [datetime, date]:
+        return {"$date": obj.strftime("%Y-%m-%dT%H:%M:%S.000Z")}
+    else:
+        return json_util.default(obj)
+
 
 
 def small_json(obj):

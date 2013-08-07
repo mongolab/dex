@@ -124,7 +124,8 @@ class Dex:
         profile_parser = ProfileParser()
         databases = self._get_requested_databases()
         connection = pymongo.MongoClient(self._db_uri,
-                                         document_class=OrderedDict)
+                                         document_class=OrderedDict,
+                                         read_preference=pymongo.ReadPreference.PRIMARY_PREFERRED)
 
         if databases == []:
             try:
@@ -159,7 +160,9 @@ class Dex:
         """Analyzes queries from a given log file"""
         profile_parser = ProfileParser()
         databases = self._get_requested_databases()
-        connection = pymongo.MongoClient(self._db_uri,document_class=OrderedDict)
+        connection = pymongo.MongoClient(self._db_uri,
+                                         document_class=OrderedDict,
+                                         read_preference=pymongo.ReadPreference.PRIMARY_PREFERRED)
         enabled_profile = False
 
         if databases == []:

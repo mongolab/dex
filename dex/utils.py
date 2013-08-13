@@ -23,6 +23,13 @@ def _custom_json_hook(obj):
     else:
         return json_util.default(obj)
 
+def validate_yaml(string):
+    try:
+        yaml.load(string, OrderedDictYAMLLoader)
+    except:
+        return False
+    else:
+        return True
 
 
 def small_json(obj):

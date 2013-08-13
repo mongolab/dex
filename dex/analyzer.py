@@ -1,6 +1,6 @@
 __author__ = 'eric'
 
-from utils import pretty_json
+from utils import pretty_json, validate_yaml
 import sys
 import pymongo
 try:
@@ -60,6 +60,12 @@ class QueryAnalyzer:
                 recommendation = self._generate_recommendation(query_analysis,
                                                                db_name,
                                                                collection_name)
+                # a temporary fix to suppress faulty parsing of $regexes.
+                # if the recommendation cannot be re-parsed into yaml, we assume
+                # it is invalid.
+                if not validate_yaml(recommendation):
+                    recommendation = None
+                    query_analysis['supported'] = False
 
         # QUERY REPORT
         return OrderedDict({
@@ -288,7 +294,6 @@ class QueryAnalyzer:
     ############################################################################
     def clear_cache(self):
         self._internal_map = {}
-
 
 ################################################################################
 # ReportAggregation

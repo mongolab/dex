@@ -245,7 +245,7 @@ class Dex:
                 break
             self._process_query(line, log_parser)
 
-        return self._make_aggregated_report()
+        return 0
 
     ############################################################################
     def watch_logfile(self, logfile_path):

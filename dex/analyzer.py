@@ -63,7 +63,7 @@ class QueryAnalyzer:
                 # a temporary fix to suppress faulty parsing of $regexes.
                 # if the recommendation cannot be re-parsed into yaml, we assume
                 # it is invalid.
-                if not validate_yaml(recommendation):
+                if not validate_yaml(recommendation['index']):
                     recommendation = None
                     query_analysis['supported'] = False
 

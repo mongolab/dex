@@ -221,6 +221,8 @@ class Dex:
         with open(logfile_path) as obj:
             self.analyze_logfile_object(obj)
 
+        self._output_aggregated_report(sys.stdout)
+
         return 0
 
     ############################################################################
@@ -242,9 +244,8 @@ class Dex:
                 self._run_stats['timeoutInMinutes'] = self._timeout
                 break
             self._process_query(line, log_parser)
-        self._output_aggregated_report(sys.stdout)
 
-        return 0
+        return self._make_aggregated_report()
 
     ############################################################################
     def watch_logfile(self, logfile_path):

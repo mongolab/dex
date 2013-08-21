@@ -39,7 +39,7 @@ except ImportError:
 # Configuration
 ################################################################################
 
-IGNORE_DBS = ['local', 'admin']
+IGNORE_DBS = ['local', 'admin', 'config']
 IGNORE_COLLECTIONS = [u'system.namespaces',
                       u'system.profile',
                       u'system.users',

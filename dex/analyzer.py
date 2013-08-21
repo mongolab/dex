@@ -88,7 +88,8 @@ class QueryAnalyzer:
             indexes = []
             try:
                 connection = pymongo.MongoClient(db_uri,
-                                                 document_class=OrderedDict)
+                                                 document_class=OrderedDict,
+                                                 read_preference=pymongo.ReadPreference.PRIMARY_PREFERRED)
                 db = connection[db_name]
                 indexes = db[collection_name].index_information()
             except:

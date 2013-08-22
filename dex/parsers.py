@@ -31,7 +31,10 @@ def scrub(e):
 def scrub_doc(d):
     for k in d:
         if k != '$orderby':
-            d[k] = scrub(d[k])
+            if k in ['$in', '$nin']:
+                d[k] = ["<val>"]
+            else:
+                d[k] = scrub(d[k])
             if d[k] is None:
                 d[k] = "<val>"
     return d

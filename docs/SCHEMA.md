@@ -31,7 +31,8 @@ A report on a query uniquely identified by queryMask.
        "avgTimeMillis": <int>,
        "avgNumReturned": <int>,
        "scanAndOrder": <boolean>,
-       "avgNumScanned": <int>
+       "avgNumScanned": <int>,
+       "supported" : <boolean>
     }
 }
 ```

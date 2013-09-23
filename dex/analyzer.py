@@ -19,7 +19,8 @@ RANGE_QUERY_OPERATORS = ['$ne', '$gt', '$lt',
 
 #The following field is provided for reference and possible future use:
 UNSUPPORTED_QUERY_OPERATORS = ['$mod', '$exists', '$size',
-                               '$type', '$elemMatch', '$where']
+                               '$type', '$elemMatch', '$where', '$near',
+                               '$within']
 
 COMPOSITE_QUERY_OPERATORS = ['$or', '$nor', '$and']
 RANGE_TYPE = 'RANGE'
@@ -94,7 +95,6 @@ class QueryAnalyzer:
                 indexes = db[collection_name].index_information()
             except:
                 warning = 'Warning: unable to connect to ' + db_uri + "\n"
-                sys.stderr.write(warning)
                 raise
             else:
                 internal_map_entry = {'indexes': indexes}
@@ -138,7 +138,7 @@ class QueryAnalyzer:
                     else:
                         for nested_field in nested_field_list:
                             if ((nested_field in RANGE_QUERY_OPERATORS) and
-                                    (nested_field not in UNSUPPORTED_QUERY_OPERATORS)):
+                                (nested_field not in UNSUPPORTED_QUERY_OPERATORS)):
                                 field_type = RANGE_TYPE
                             else:
                                 supported = False
@@ -355,4 +355,6 @@ class ReportAggregation:
         detail = OrderedDict([('count', 1),
                               ('totalTimeMillis', initial_millis),
                               ('avgTimeMillis', initial_millis)])
+        if report['queryAnalysis']['supported'] is False:
+            detail['supported'] = False
         return detail

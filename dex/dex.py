@@ -115,7 +115,7 @@ class Dex:
                 if query_report is not None:
                     if query_report['recommendation'] is not None:
                         self._run_stats['linesWithRecommendations'] += 1
-                        self._report.add_query_occurrence(query_report)
+                    self._report.add_query_occurrence(query_report)
 
     ############################################################################
     def analyze_profile(self):

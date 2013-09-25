@@ -65,7 +65,7 @@ class Parser(object):
                 query = handler.handle(input)
             except Exception as e:
                 query = None
-                traceback.print_exc()
+                #traceback.print_exc()
             finally:
                 if query is not None:
                     return query

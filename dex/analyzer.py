@@ -50,9 +50,18 @@ class QueryAnalyzer:
         index_cache_entry = self._ensure_index_cache(db_uri,
                                                      db_name,
                                                      collection_name)
-        query_analysis = self._generate_query_analysis(parsed_query,
-                                                       db_name,
-                                                       collection_name)
+        query_analysis = None
+        if not parsed_query['supported']:
+            query_analysis = OrderedDict({
+                'analyzedFields': [],
+                'fieldCount': 0,
+                'supported': False,
+                'queryMask': parsed_query['queryMask']
+            })
+        else:
+            query_analysis = self._generate_query_analysis(parsed_query,
+                                                           db_name,
+                                                           collection_name)
         if ((query_analysis['analyzedFields'] != []) and
                 query_analysis['supported']):
             index_analysis = self._generate_index_analysis(query_analysis,
@@ -123,7 +132,7 @@ class QueryAnalyzer:
             field_count += 1
             sort_seq += 1
 
-        query_component = parsed_query['query']
+        query_component = parsed_query['query'] if 'query' in parsed_query else {}
         for key in query_component:
             if key not in sort_fields:
                 field_type = UNSUPPORTED_TYPE
@@ -355,6 +364,5 @@ class ReportAggregation:
         detail = OrderedDict([('count', 1),
                               ('totalTimeMillis', initial_millis),
                               ('avgTimeMillis', initial_millis)])
-        if report['queryAnalysis']['supported'] is False:
-            detail['supported'] = False
+        detail['supported'] = report['queryAnalysis']['supported']
         return detail

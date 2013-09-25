@@ -11,17 +11,20 @@ try:
 except ImportError:
     from ordereddict import OrderedDict
 
+
 ################################################################################
 # Utilities
 ################################################################################
 def pretty_json(obj):
     return json.dumps(obj, indent=4, default=_custom_json_hook)
 
+
 def _custom_json_hook(obj):
     if type(obj) in [datetime, date]:
         return {"$date": obj.strftime("%Y-%m-%dT%H:%M:%S.000Z")}
     else:
         return json_util.default(obj)
+
 
 def validate_yaml(string):
     try:

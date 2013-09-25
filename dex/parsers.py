@@ -143,9 +143,10 @@ class ProfileParser(Parser):
 class LogParser(Parser):
     def __init__(self):
         """Declares the QueryLineHandlers to use"""
-        super(LogParser, self).__init__([StandardQueryHandler(),
-                                         CmdQueryHandler(),
-                                         UpdateQueryHandler()])
+        super(LogParser, self).__init__([CmdQueryHandler(),
+                                         UpdateQueryHandler(),
+                                         StandardQueryHandler(),
+                                         TimeLineHandler()])
         self._ts_rx = re.compile('^(?P<ts>[a-zA-Z]{3} [a-zA-Z]{3} {1,2}\d+ \d{2}:\d{2}:\d{2}).*')
 
     def get_line_time(self, line):
@@ -158,6 +159,28 @@ class LogParser(Parser):
             ts = datetime.fromtimestamp(timestamp)
         return ts
 
+
+############################################################################
+# Empty TimeLineHandler class
+#   Last Resort for unparsed lines
+############################################################################
+class TimeLineHandler:
+    ########################################################################
+    def __init__(self):
+        self.name = 'Standard Query Log Line Handler'
+        self._regex = '.*(?P<query_time>\d+)ms'
+        self._rx = re.compile(self._regex)
+
+    ########################################################################
+    def handle(self, input):
+        match = self._rx.match(input)
+        if match is not None:
+            return {'ns': "?",
+                    'stats': {"millis": match.group('query_time')},
+                    'supported': False,
+                    'queryMask': "{}"
+            }
+        return None
 
 
 ############################################################################
@@ -219,6 +242,7 @@ class StandardQueryHandler(QueryLineHandler):
                 result['ns'] = match.group('ns')
                 result['stats'] = self.parse_line_stats(match.group('stats'))
                 result['stats']['millis'] = match.group('query_time')
+                result['supported'] = True
                 return result
         return None
 
@@ -247,21 +271,28 @@ class CmdQueryHandler(QueryLineHandler):
                 result['stats'] = self.parse_line_stats(match.group('stats'))
                 result['stats']['millis'] = match.group('query_time')
 
-                toMask = OrderedDict()
-                result['query'] = scrub(parsed['query'])
-                toMask['$query'] = parsed['query']
+                command = parsed.keys()[0]
 
-                if 'count' in parsed:
+                toMask = OrderedDict()
+                toMask['$cmd'] = parsed.keys()[0]
+
+                result['supported'] = True
+                if command == 'count':
                     result['ns'] = match.group('db') + '.'
                     result['ns'] += parsed['count']
-                elif 'findAndModify' in parsed:
+                    result['query'] = scrub(parsed['query'])
+                    toMask['$query'] = parsed['query']
+                elif command == 'findAndModify':
                     if 'sort' in parsed:
                         result['orderby'] = parsed['sort']
                         toMask['$orderby'] = parsed['sort']
                     result['ns'] = match.group('db') + '.'
                     result['ns'] += parsed['findAndModify']
+                    result['query'] = scrub(parsed['query'])
+                    toMask['$query'] = parsed['query']
                 else:
-                    return None
+                    result['supported'] = False
+                    result['ns'] = match.group('db') + '.$cmd'
 
                 result['queryMask'] = mask(toMask)
                 return result
@@ -298,6 +329,7 @@ class UpdateQueryHandler(QueryLineHandler):
                 result['ns'] = match.group('ns')
                 result['stats'] = self.parse_line_stats(match.group('stats'))
                 result['stats']['millis'] = match.group('query_time')
+                result['supported'] = True
                 return result
         return None
 

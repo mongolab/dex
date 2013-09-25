@@ -30,6 +30,7 @@ from analyzer import QueryAnalyzer, ReportAggregation
 from parsers import LogParser, ProfileParser
 from datetime import datetime
 from datetime import timedelta
+import traceback
 try:
     from collections import OrderedDict
 except ImportError:
@@ -97,25 +98,34 @@ class Dex:
         parsed = parser.parse(input)
 
         if parsed is not None:
-            self._run_stats['linesAnalyzed'] += 1
-            namespace_tuple = self._tuplefy_namespace(parsed['ns'])
-            # If the query is for a requested namespace ....
-            if self._namespace_requested(parsed['ns']):
-                db_name = namespace_tuple[0]
-                collection_name = namespace_tuple[1]
-                query_report = None
-                if parsed['stats']['millis'] >= self._slowms:
-                    try:
-                        query_report = self.generate_query_report(self._db_uri,
-                                                                  parsed,
-                                                                  db_name,
-                                                                  collection_name)
-                    except Exception as e:
-                        return 1
-                if query_report is not None:
-                    if query_report['recommendation'] is not None:
-                        self._run_stats['linesWithRecommendations'] += 1
-                    self._report.add_query_occurrence(query_report)
+            if parsed['supported']:
+                self._run_stats['linesAnalyzed'] += 1
+                namespace_tuple = self._tuplefy_namespace(parsed['ns'])
+                # If the query is for a requested namespace ....
+                if self._namespace_requested(parsed['ns']):
+                    db_name = namespace_tuple[0]
+                    collection_name = namespace_tuple[1]
+                    query_report = None
+                    if parsed['stats']['millis'] >= self._slowms:
+                        try:
+                            query_report = self.generate_query_report(self._db_uri,
+                                                                      parsed,
+                                                                      db_name,
+                                                                      collection_name)
+                        except Exception as e:
+                            print traceback.print_exc()
+                            return 1
+                    if query_report is not None:
+                        if query_report['recommendation'] is not None:
+                            self._run_stats['linesWithRecommendations'] += 1
+                        self._report.add_query_occurrence(query_report)
+            else:
+                self._run_stats['unparsableLineInfo']['unparsableLines'] += 1
+                self._run_stats['unparsableLineInfo']['unparsableLinesWithTime'] += 1
+                self._run_stats['unparsableLineInfo']['unparsedTimeMillis'] += int(parsed['stats']['millis'])
+        else:
+            self._run_stats['unparsableLineInfo']['unparsableLines'] += 1
+            self._run_stats['unparsableLineInfo']['unparsableLinesWithoutTime'] += 1
 
     ############################################################################
     def analyze_profile(self):
@@ -284,7 +294,11 @@ class Dex:
                             ('dexTime', datetime.utcnow()),
                             ('logSource', None),
                             ('timeRange', OrderedDict([('start', None),
-                                                       ('end', None)]))])
+                                                       ('end', None)])),
+                            ('unparsableLineInfo', OrderedDict([('unparsableLines', 0),
+                                                                ('unparsableLinesWithoutTime', 0),
+                                                                ('unparsableLinesWithTime', 0),
+                                                                ('unparsedTimeMillis', 0)]))])
 
     ############################################################################
     def _make_aggregated_report(self):

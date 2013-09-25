@@ -11,6 +11,12 @@ The output of Dex
     "timeRange": {
         "start": <datetime>,
         "end": <datetime>
+      },
+    "unparsableLineInfo": {
+        "unparsableLines": <int>,
+        "unparsableLinesWithoutTime": <int>,
+        "unparsableLinesWithTime": <int>,
+        "unparsedTimeMillis": <int>
       }
     },
   "results": [<queryReport>,...]
@@ -38,7 +44,7 @@ A report on a query uniquely identified by queryMask.
 ```
 
 #queryOccurrence
-Primary internal data structure for Dex. Represents Dex's assessment of a single occurrence of a single query.
+Primary internal data structure for Dex. Represents Dex"s assessment of a single occurrence of a single query.
 ```
 {
     "queryMask": <string>
@@ -101,21 +107,21 @@ A comparison of the available indexes in a collection to the needs of the query
 
 ```
 {
-    "needsRecommendation": <boolean>,
+    "indexStatus": <string ("full" | "partial" | "none")>
     "fullIndexes": [<indexReport>],
     "partialIndexes": [<indexReport>]
 }
 ```
 
 ###queryOccurrence.indexAnalysis.indexReport
-An evaluation of each index's ability to cover the query
+An evaluation of each index"s ability to cover the query
 
 ```
 {
     "index": <json> 
     "supported": <boolean>, 
     "queryFieldsCovered": <int>, 
-    "coverage": <string ("full" | "partial"), 
+    "coverage": <string ("full" | "partial" | "none")>,
     "idealOrder": <boolean>
 }
 ```

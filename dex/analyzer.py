@@ -22,6 +22,8 @@ UNSUPPORTED_QUERY_OPERATORS = ['$mod', '$exists', '$size',
                                '$type', '$elemMatch', '$where', '$near',
                                '$within']
 
+SUPPORTED_COMMANDS = ['count', 'findAndModify']
+
 COMPOSITE_QUERY_OPERATORS = ['$or', '$nor', '$and']
 RANGE_TYPE = 'RANGE'
 EQUIV_TYPE = 'EQUIV'
@@ -46,27 +48,21 @@ class QueryAnalyzer:
         index_analysis = None
         recommendation = None
         namespace = parsed_query['ns']
+        indexStatus = "unknown"
 
         index_cache_entry = self._ensure_index_cache(db_uri,
                                                      db_name,
                                                      collection_name)
-        query_analysis = None
-        if not parsed_query['supported']:
-            query_analysis = OrderedDict({
-                'analyzedFields': [],
-                'fieldCount': 0,
-                'supported': False,
-                'queryMask': parsed_query['queryMask']
-            })
-        else:
-            query_analysis = self._generate_query_analysis(parsed_query,
-                                                           db_name,
-                                                           collection_name)
+
+        query_analysis = self._generate_query_analysis(parsed_query,
+                                                       db_name,
+                                                       collection_name)
         if ((query_analysis['analyzedFields'] != []) and
-                query_analysis['supported']):
+             query_analysis['supported']):
             index_analysis = self._generate_index_analysis(query_analysis,
                                                            index_cache_entry['indexes'])
-            if index_analysis['needsRecommendation']:
+            indexStatus = index_analysis['indexStatus']
+            if index_analysis['indexStatus'] != 'full':
                 recommendation = self._generate_recommendation(query_analysis,
                                                                db_name,
                                                                collection_name)
@@ -77,9 +73,11 @@ class QueryAnalyzer:
                     recommendation = None
                     query_analysis['supported'] = False
 
+
         # QUERY REPORT
         return OrderedDict({
             'queryMask': parsed_query['queryMask'],
+            'indexStatus': indexStatus,
             'parsed': parsed_query,
             'namespace': namespace,
             'queryAnalysis': query_analysis,
@@ -120,47 +118,50 @@ class QueryAnalyzer:
         sort_fields = []
         query_mask = None
 
-        #if 'orderby' in parsed_query:
-        sort_component = parsed_query['orderby'] if 'orderby' in parsed_query else []
-        sort_seq = 0
-        for key in sort_component:
-            sort_field = {'fieldName': key,
-                          'fieldType': SORT_TYPE,
-                          'seq': sort_seq}
-            sort_fields.append(key)
-            analyzed_fields.append(sort_field)
-            field_count += 1
-            sort_seq += 1
-
-        query_component = parsed_query['query'] if 'query' in parsed_query else {}
-        for key in query_component:
-            if key not in sort_fields:
-                field_type = UNSUPPORTED_TYPE
-                if ((key not in UNSUPPORTED_QUERY_OPERATORS) and
-                        (key not in COMPOSITE_QUERY_OPERATORS)):
-                    try:
-                        if query_component[key] == {}:
-                            raise
-                        nested_field_list = query_component[key].keys()
-                    except:
-                        field_type = EQUIV_TYPE
-                    else:
-                        for nested_field in nested_field_list:
-                            if ((nested_field in RANGE_QUERY_OPERATORS) and
-                                (nested_field not in UNSUPPORTED_QUERY_OPERATORS)):
-                                field_type = RANGE_TYPE
-                            else:
-                                supported = False
-                                field_type = UNSUPPORTED_TYPE
-                                break
-
-                if field_type is UNSUPPORTED_TYPE:
-                    supported = False
-
-                analyzed_field = {'fieldName': key,
-                                  'fieldType': field_type}
-                analyzed_fields.append(analyzed_field)
+        if 'command' in parsed_query and parsed_query['command'] not in SUPPORTED_COMMANDS:
+            supported = False
+        else:
+            #if 'orderby' in parsed_query:
+            sort_component = parsed_query['orderby'] if 'orderby' in parsed_query else []
+            sort_seq = 0
+            for key in sort_component:
+                sort_field = {'fieldName': key,
+                              'fieldType': SORT_TYPE,
+                              'seq': sort_seq}
+                sort_fields.append(key)
+                analyzed_fields.append(sort_field)
                 field_count += 1
+                sort_seq += 1
+
+            query_component = parsed_query['query'] if 'query' in parsed_query else {}
+            for key in query_component:
+                if key not in sort_fields:
+                    field_type = UNSUPPORTED_TYPE
+                    if ((key not in UNSUPPORTED_QUERY_OPERATORS) and
+                            (key not in COMPOSITE_QUERY_OPERATORS)):
+                        try:
+                            if query_component[key] == {}:
+                                raise
+                            nested_field_list = query_component[key].keys()
+                        except:
+                            field_type = EQUIV_TYPE
+                        else:
+                            for nested_field in nested_field_list:
+                                if ((nested_field in RANGE_QUERY_OPERATORS) and
+                                    (nested_field not in UNSUPPORTED_QUERY_OPERATORS)):
+                                    field_type = RANGE_TYPE
+                                else:
+                                    supported = False
+                                    field_type = UNSUPPORTED_TYPE
+                                    break
+
+                    if field_type is UNSUPPORTED_TYPE:
+                        supported = False
+
+                    analyzed_field = {'fieldName': key,
+                                      'fieldType': field_type}
+                    analyzed_fields.append(analyzed_field)
+                    field_count += 1
 
         query_mask = parsed_query['queryMask']
 
@@ -194,11 +195,9 @@ class QueryAnalyzer:
                         partial_indexes.append(index_report)
 
         # INDEX ANALYSIS
-        return OrderedDict({
-            'fullIndexes': full_indexes,
-            'partialIndexes': partial_indexes,
-            'needsRecommendation': needs_recommendation
-        })
+        return OrderedDict([('indexStatus', index_report['coverage']),
+                            ('fullIndexes', full_indexes),
+                            ('partialIndexes', partial_indexes)])
 
     ############################################################################
     def _generate_index_report(self, index, query_analysis):
@@ -323,13 +322,12 @@ class ReportAggregation:
         existing_report = self._get_existing_report(mask, report)
 
         if existing_report is not None:
-            if ((report['indexAnalysis'] is None) or
-                    (report['indexAnalysis']['needsRecommendation'] is True)):
-                self._merge_report(existing_report, report)
+            self._merge_report(existing_report, report)
         else:
             self._reports.append(OrderedDict([
                 ('queryMask', mask),
                 ('namespace', report['namespace']),
+                ('indexStatus', report['indexStatus']),
                 ('recommendation', report['recommendation']),
                 ('details', initial_query_detail)]))
 

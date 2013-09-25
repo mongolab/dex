@@ -65,6 +65,7 @@ class Parser(object):
                 query = handler.handle(input)
             except Exception as e:
                 query = None
+                traceback.print_exc()
             finally:
                 if query is not None:
                     return query
@@ -178,7 +179,7 @@ class TimeLineHandler:
             return {'ns': "?",
                     'stats': {"millis": match.group('query_time')},
                     'supported': False,
-                    'queryMask': "{}"
+                    'queryMask': None
             }
         return None
 
@@ -276,12 +277,13 @@ class CmdQueryHandler(QueryLineHandler):
                 toMask = OrderedDict()
                 toMask['$cmd'] = parsed.keys()[0]
 
+                result['command'] = command
                 result['supported'] = True
                 if command == 'count':
                     result['ns'] = match.group('db') + '.'
                     result['ns'] += parsed['count']
                     result['query'] = scrub(parsed['query'])
-                    toMask['$query'] = parsed['query']
+                    toMask['$query'] = result['query']
                 elif command == 'findAndModify':
                     if 'sort' in parsed:
                         result['orderby'] = parsed['sort']
@@ -289,7 +291,12 @@ class CmdQueryHandler(QueryLineHandler):
                     result['ns'] = match.group('db') + '.'
                     result['ns'] += parsed['findAndModify']
                     result['query'] = scrub(parsed['query'])
-                    toMask['$query'] = parsed['query']
+                    toMask['$query'] = result['query']
+                elif command == 'geoNear':
+                    result['ns'] = match.group('db') + '.'
+                    result['ns'] += parsed['geoNear']
+                    result['query'] = scrub(parsed['search'])
+                    toMask['$query'] = result['query']
                 else:
                     result['supported'] = False
                     result['ns'] = match.group('db') + '.$cmd'

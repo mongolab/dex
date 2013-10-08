@@ -38,7 +38,7 @@ corresponding database.
 ```
 
 Or, run Dex on a populated MongoDB system.profile collection. It is recommended
-that you run db.enableProfilingLevel(1), and wait until a representative set of
+that you run db.setProfilingLevel(1), and wait until a representative set of
 queries/operations have been run on the database. Then run db.setProfilingLevel(0)
 to stop profiling. Then, run Dex:
 

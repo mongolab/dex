@@ -102,7 +102,6 @@ class QueryAnalyzer:
                 indexes = db[collection_name].index_information()
             except:
                 warning = 'Warning: unable to connect to ' + db_uri + "\n"
-                raise
             else:
                 internal_map_entry = {'indexes': indexes}
                 self.get_cache()[db_name][collection_name] = internal_map_entry
@@ -193,6 +192,8 @@ class QueryAnalyzer:
                             needs_recommendation = False
                     elif index_report['coverage'] == 'partial':
                         partial_indexes.append(index_report)
+        else:
+            index_report = {'coverage': 'unknown'}
 
         # INDEX ANALYSIS
         return OrderedDict([('indexStatus', index_report['coverage']),
@@ -316,7 +317,7 @@ class ReportAggregation:
     def add_query_occurrence(self, report):
         """Adds a report to the report aggregation"""
 
-        initial_query_detail = self._get_initial_query_detail(report)
+        initial_millis = int(report['parsed']['stats']['millis'])
         mask = report['queryMask']
 
         existing_report = self._get_existing_report(mask, report)
@@ -325,11 +326,14 @@ class ReportAggregation:
             self._merge_report(existing_report, report)
         else:
             self._reports.append(OrderedDict([
-                ('queryMask', mask),
                 ('namespace', report['namespace']),
+                ('queryMask', mask),
+                ('supported', report['queryAnalysis']['supported']),
                 ('indexStatus', report['indexStatus']),
                 ('recommendation', report['recommendation']),
-                ('details', initial_query_detail)]))
+                ('details', OrderedDict([('count', 1),
+                                         ('totalTimeMillis', initial_millis),
+                                         ('avgTimeMillis', initial_millis)]))]))
 
     ############################################################################
     def get_reports(self):
@@ -354,13 +358,3 @@ class ReportAggregation:
         target['details']['totalTimeMillis'] += query_millis
         target['details']['count'] += 1
         target['details']['avgTimeMillis'] = target['details']['totalTimeMillis'] / target['details']['count']
-
-    ############################################################################
-    def _get_initial_query_detail(self, report):
-        """Returns a new query query document from the report"""
-        initial_millis = int(report['parsed']['stats']['millis'])
-        detail = OrderedDict([('count', 1),
-                              ('totalTimeMillis', initial_millis),
-                              ('avgTimeMillis', initial_millis)])
-        detail['supported'] = report['queryAnalysis']['supported']
-        return detail

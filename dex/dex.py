@@ -113,7 +113,7 @@ class Dex:
                                                                       db_name,
                                                                       collection_name)
                         except Exception as e:
-                            #print traceback.print_exc()
+                            print traceback.print_exc()
                             return 1
                     if query_report is not None:
                         if query_report['recommendation'] is not None:
@@ -150,7 +150,7 @@ class Dex:
                 if ignore_db in databases:
                     databases.remove(ignore_db)
 
-        for database in databases:
+        for dataase in databases:
 
             db = connection[database]
 

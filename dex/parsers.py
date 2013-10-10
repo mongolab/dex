@@ -15,9 +15,6 @@ except ImportError:
 ################################################################################
 # Query masking and scrubbing functions
 ################################################################################
-def mask(parsed):
-    return small_json(parsed)
-
 
 def scrub(e):
     if isinstance(e, dict):
@@ -30,13 +27,12 @@ def scrub(e):
 
 def scrub_doc(d):
     for k in d:
-        if k != '$orderby':
-            if k in ['$in', '$nin', '$all']:
-                d[k] = ["<val>"]
-            else:
-                d[k] = scrub(d[k])
-            if d[k] is None:
-                d[k] = "<val>"
+        if k in ['$in', '$nin', '$all']:
+            d[k] = ["<val>"]
+        else:
+            d[k] = scrub(d[k])
+        if d[k] is None:
+            d[k] = "<val>"
     return d
 
 
@@ -65,7 +61,6 @@ class Parser(object):
                 query = handler.handle(input)
             except Exception as e:
                 query = None
-                #traceback.print_exc()
             finally:
                 if query is not None:
                     return query
@@ -114,8 +109,8 @@ class ProfileParser(Parser):
                             orderby = input['updateobj']['orderby']
                     result['ns'] = input['ns']
                 elif ((input['op'] == 'command') and
-                      ((input['command'].has_key('count')) or
-                       (input['command'].has_key('findAndModify')))):
+                          ((input['command'].has_key('count')) or
+                               (input['command'].has_key('findAndModify')))):
                     query = input['command']['query']
                     db = input['ns'][0:input['ns'].rfind('.')]
                     result['ns'] = db + "." + input['command']['count']
@@ -130,7 +125,7 @@ class ProfileParser(Parser):
                 result['query'] = scrub(query)
                 toMask['$query'] = query
 
-                result['queryMask'] = mask(toMask)
+                result['queryMask'] = small_json(toMask)
                 result['stats'] = {'millis': input['millis']}
                 return result
             else:
@@ -213,6 +208,34 @@ class QueryLineHandler:
 
         return line_stats
 
+    def standardize_query(self, query_yaml):
+        if len(query_yaml.keys()) == 1:
+            if '$query' in query_yaml:
+                return scrub(query_yaml)
+            if 'query' in query_yaml:
+                return OrderedDict([('$query', scrub(query_yaml['query']))])
+
+        if len(query_yaml.keys()) == 2:
+            query = None
+            orderby = None
+
+            if 'query' in query_yaml:
+                query = query_yaml['query']
+            elif '$query' in query_yaml:
+                query = query_yaml['$query']
+
+            if 'orderby' in query_yaml:
+                orderby = query_yaml['orderby']
+            elif '$orderby' in query_yaml:
+                orderby = query_yaml['$orderby']
+
+            if query is not None and orderby is not None:
+                return OrderedDict([('$query', scrub(query)),
+                                    ('$orderby', orderby)])
+
+        return OrderedDict([('$query', scrub(query_yaml))])
+
+
 
 ############################################################################
 # StandardQueryHandler
@@ -235,11 +258,11 @@ class StandardQueryHandler(QueryLineHandler):
             parsed = self.parse_query(match.group('query'))
             if parsed is not None:
                 result = OrderedDict()
-                scrubbed = scrub(parsed)
+                scrubbed = self.standardize_query(parsed)
                 result['query'] = scrubbed['$query']
                 if '$orderby' in scrubbed:
                     result['orderby'] = scrubbed['$orderby']
-                result['queryMask'] = mask(scrubbed)
+                result['queryMask'] = small_json(scrubbed)
                 result['ns'] = match.group('ns')
                 result['stats'] = self.parse_line_stats(match.group('stats'))
                 result['stats']['millis'] = match.group('query_time')
@@ -275,33 +298,41 @@ class CmdQueryHandler(QueryLineHandler):
                 command = parsed.keys()[0]
 
                 toMask = OrderedDict()
-                toMask['$cmd'] = parsed.keys()[0]
 
                 result['command'] = command
                 result['supported'] = True
-                if command == 'count':
+                if command.lower() == 'count':
                     result['ns'] = match.group('db') + '.'
                     result['ns'] += parsed['count']
-                    result['query'] = scrub(parsed['query'])
-                    toMask['$query'] = result['query']
-                elif command == 'findAndModify':
+                    query = self.standardize_query(parsed['query'])
+                    result['query'] = query
+                    toMask = query
+                elif command.lower() == 'findandmodify':
                     if 'sort' in parsed:
                         result['orderby'] = parsed['sort']
                         toMask['$orderby'] = parsed['sort']
                     result['ns'] = match.group('db') + '.'
                     result['ns'] += parsed['findAndModify']
-                    result['query'] = scrub(parsed['query'])
-                    toMask['$query'] = result['query']
-                elif command == 'geoNear':
+                    query = self.standardize_query(parsed['query'])
+                    result['query'] = query
+                    if 'sort' in parsed:
+                        result['orderby'] = parsed['sort']
+                        toMask['$orderby'] = parsed['sort']
+                    toMask['$query'] = query
+
+                elif command.lower() == 'geonear':
                     result['ns'] = match.group('db') + '.'
                     result['ns'] += parsed['geoNear']
-                    result['query'] = scrub(parsed['search'])
-                    toMask['$query'] = result['query']
+                    query = self.standardize_query(parsed['search'])
+                    result['query'] = query
+                    toMask = query
                 else:
                     result['supported'] = False
                     result['ns'] = match.group('db') + '.$cmd'
 
-                result['queryMask'] = mask(toMask)
+                toMask['$cmd'] = parsed.keys()[0]
+                result['queryMask'] = small_json(toMask)
+
                 return result
         return None
 
@@ -328,11 +359,11 @@ class UpdateQueryHandler(QueryLineHandler):
             parsed = self.parse_query(match.group('query'))
             if parsed is not None:
                 result = OrderedDict()
-                scrubbed = scrub(parsed)
+                scrubbed = self.standardize_query(parsed)
                 result['query'] = scrubbed['$query']
                 if '$orderby' in scrubbed:
                     result['orderby'] = scrubbed['$orderby']
-                result['queryMask'] = mask(scrubbed)
+                result['queryMask'] = small_json(scrubbed)
                 result['ns'] = match.group('ns')
                 result['stats'] = self.parse_line_stats(match.group('stats'))
                 result['stats']['millis'] = match.group('query_time')

@@ -27,7 +27,7 @@ import pymongo
 import yaml
 import sys
 from dex import dex
-from dex.parsers import Parser, QueryLineHandler, mask, scrub
+from dex.parsers import Parser, QueryLineHandler, small_json, scrub
 from dex.utils import pretty_json
 import os
 try:
@@ -393,5 +393,5 @@ class TestParser(Parser):
                 result['ns'] = TEST_DBNAME + "." + TEST_COLLECTION
                 result['stats'] = {}
                 result['stats']['millis'] = 500
-                result['queryMask'] = mask(scrubbed)
+                result['queryMask'] = small_json(scrubbed)
                 return result

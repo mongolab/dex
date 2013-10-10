@@ -105,6 +105,7 @@ class QueryAnalyzer:
             else:
                 internal_map_entry = {'indexes': indexes}
                 self.get_cache()[db_name][collection_name] = internal_map_entry
+        print "CACHE CHECK", self.get_cache()[db_name][collection_name]
         return self.get_cache()[db_name][collection_name]
 
     ############################################################################

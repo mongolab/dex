@@ -114,7 +114,7 @@ class Dex:
                                                                       collection_name)
                             if 'command' in parsed and parsed['command'].lower() == 'findandmodify':
                         except Exception as e:
-                            print traceback.print_exc()
+                            #print traceback.print_exc()
                             return 1
                     if query_report is not None:
                         if query_report['recommendation'] is not None:

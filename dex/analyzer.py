@@ -102,6 +102,7 @@ class QueryAnalyzer:
                 indexes = db[collection_name].index_information()
             except:
                 warning = 'Warning: unable to connect to ' + db_uri + "\n"
+                print warning
             else:
                 internal_map_entry = {'indexes': indexes}
                 self.get_cache()[db_name][collection_name] = internal_map_entry

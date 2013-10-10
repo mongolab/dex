@@ -345,7 +345,7 @@ class test_dex(unittest.TestCase):
                                         TEST_COLLECTION)
         test_dex._report.add_query_occurrence(result)
         self.assertEqual(len(report), 1)
-        self.assertEqual(report[0]['details']['count'], 1)
+        self.assertEqual(report[0]['stats']['count'], 1)
 
         test_query = "{ $query: {}, $orderby: { simpleUnindexedField: null }}"
         result = test_dex.generate_query_report(None,

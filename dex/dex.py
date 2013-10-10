@@ -123,6 +123,7 @@ class Dex:
                 self._run_stats['unparsableLineInfo']['unparsableLines'] += 1
                 self._run_stats['unparsableLineInfo']['unparsableLinesWithTime'] += 1
                 self._run_stats['unparsableLineInfo']['unparsedTimeMillis'] += int(parsed['stats']['millis'])
+                self._run_stats['unparsableLineInfo']['unparsedAvgTimeMillis'] = self._run_stats['unparsableLineInfo']['unparsedTimeMillis'] / self._run_stats['unparsableLineInfo']['unparsableLinesWithTime']
         else:
             self._run_stats['unparsableLineInfo']['unparsableLines'] += 1
             self._run_stats['unparsableLineInfo']['unparsableLinesWithoutTime'] += 1
@@ -298,7 +299,8 @@ class Dex:
                             ('unparsableLineInfo', OrderedDict([('unparsableLines', 0),
                                                                 ('unparsableLinesWithoutTime', 0),
                                                                 ('unparsableLinesWithTime', 0),
-                                                                ('unparsedTimeMillis', 0)]))])
+                                                                ('unparsedTimeMillis', 0),
+                                                                ('unparsedAvgTimeMillis', 0)]))])
 
     ############################################################################
     def _make_aggregated_report(self):

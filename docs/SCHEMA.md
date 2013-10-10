@@ -31,7 +31,7 @@ A report on a query uniquely identified by queryMask.
     "queryMask": <queryOccurrence.queryMask>,
     "recommendation": <queryOccurrence.recommendation>,
     "namespace": <queryReport.namespace>,
-    "details": {
+    "stats": {
        "count": <int>,
        "totalTimeMillis": <int>,
        "avgTimeMillis": <int>,
@@ -51,18 +51,20 @@ Primary internal data structure for Dex. Represents Dex"s assessment of a single
     "recommendation": <recommendation>,
     "indexAnalysis": <indexAnalysis>,
     "namespace":  <string>,
-    "details": <details>,
+    "supported": <boolean>,
+    "parsed": <parsed>,
     "queryAnalysis": <queryAnalysis>
 }
 ```
 
-##queryOccurrence.details
+##queryOccurrence.parsed
 Initial data structure extracted from a parsed log line or profile entry.
 
 ```
 {
     "queryMask": <string>,
     "ns": <string>,
+    "supported": <boolean>,
     "query": <json>,
     "orderby": <json>,
     "stats": {

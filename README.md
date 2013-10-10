@@ -216,10 +216,10 @@ query as identified by 'queryMask'. Each report includes:
 * queryMask - The query pattern, with values masked ($query for query component, $orderby for sort component)
 * namespace - The MongoDB namespace in which to create the index,
 in the form "db.collection"
-* details - specific query details aggregated from each query occurrence.
-* details.count - The total number of queries that occurred.
-* details.avgTimeMillis - The average time this query currently takes.
-* details.totalTimeMillis - The sum amount of time consumed by all of the queries that
+* stats - specific query statistics aggregated from each query occurrence.
+* stats.count - The total number of queries that occurred.
+* stats.avgTimeMillis - The average time this query currently takes.
+* stats.totalTimeMillis - The sum amount of time consumed by all of the queries that
 match the queryMask.
 * recommendation - A fully-formed recommendation object.
  * recommendation.index - The index recommended.
@@ -229,93 +229,7 @@ the MongoDB shell.
 
 Sample:
 ```
-{
-    'runStats': {
-        'linesWithRecommendations': 12,
-        'linesAnalyzed': 16,
-        'linesRead': 22,
-        'timeRange': {
-                        'start': {
-                            '$date': 1375167617000
-                        },
-                        'end': {
-                            '$date': 1375227086000
-                        }
-                    }
-    },
-    'results': [
-        {
-            'queryMask': '{"$orderby":{"classes":1,"level":1},"$query":{"classes":"<val>","level":{"$gte":"<val>"},"name":"<val>"}}',
-            'namespace': 'mongoquest.adventurers',
-            'recommendation': {
-                'index': '{"name": 1, "classes": 1, "level": 1}',
-                'namespace': 'mongoquest.adventurers',
-                'shellCommand': 'db["adventurers"].ensureIndex({"name": 1, "classes": 1, "level": 1}, {"background": true})'
-            },
-            'details': {
-                'count': 4,
-                'totalTimeMillis': 809,
-                'avgTimeMillis': 202
-            }
-        },
-        {
-            'queryMask': '{"$query":{"name":"<val>"}}',
-            'namespace': 'mongoquest.adventurers',
-            'recommendation': {
-                'index': '{"name": 1}',
-                'namespace': 'mongoquest.adventurers',
-                'shellCommand': 'db["adventurers"].ensureIndex({"name": 1}, {"background": true})'
-            },
-            'details': {
-                'count': 2,
-                'totalTimeMillis': 476,
-                'avgTimeMillis': 238
-            }
-        },
-        {
-            'queryMask': '{"$query":{"classes":"<val>"}}',
-            'namespace': 'mongoquest.adventurers',
-            'recommendation': {
-                'index': '{"classes": 1}',
-                'namespace': 'mongoquest.adventurers',
-                'shellCommand': 'db["adventurers"].ensureIndex({"classes": 1}, {"background": true})'
-            },
-            'details': {
-                'count': 2,
-                'totalTimeMillis': 438,
-                'avgTimeMillis': 219
-            }
-        },
-        {
-            'queryMask': '{"$orderby":{"classes":1,"level":1},"$query":{"classes":"<val>","level":"<val>","name":"<val>"}}',
-            'namespace': 'mongoquest.adventurers',
-            'recommendation': {
-                'index': '{"name": 1, "classes": 1, "level": 1}',
-                'namespace': 'mongoquest.adventurers',
-                'shellCommand': 'db["adventurers"].ensureIndex({"name": 1, "classes": 1, "level": 1}, {"background": true})'
-            },
-            'details': {
-                'count': 2,
-                'totalTimeMillis': 401,
-                'avgTimeMillis': 200
-            }
-        },
-        {
-            'queryMask': '{"$query":{"level":{"$gte":"<val>"}}}',
-            'namespace': 'mongoquest.adventurers',
-            'recommendation': {
-                'index': '{"level": 1}',
-                'namespace': 'mongoquest.adventurers',
-                'shellCommand': 'db["adventurers"].ensureIndex({"level": 1}, {"background": true})'
-            },
-            'details': {
-                'count': 2,
-                'totalTimeMillis': 326,
-                'avgTimeMillis': 163
-            }
-        }
-    ]
-}
+
 ```
 
 #### Watch Mode Output to STDERR

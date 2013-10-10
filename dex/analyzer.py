@@ -337,15 +337,15 @@ class ReportAggregation:
                 ('supported', report['queryAnalysis']['supported']),
                 ('indexStatus', report['indexStatus']),
                 ('recommendation', report['recommendation']),
-                ('details', OrderedDict([('count', 1),
-                                         ('totalTimeMillis', initial_millis),
-                                         ('avgTimeMillis', initial_millis)]))]))
+                ('stats', OrderedDict([('count', 1),
+                                       ('totalTimeMillis', initial_millis),
+                                       ('avgTimeMillis', initial_millis)]))]))
 
     ############################################################################
     def get_reports(self):
         """Returns a minimized version of the aggregation"""
         return sorted(self._reports,
-                      key=lambda x: x['details']['totalTimeMillis'],
+                      key=lambda x: x['stats']['totalTimeMillis'],
                       reverse=True)
 
     ############################################################################
@@ -361,6 +361,6 @@ class ReportAggregation:
     def _merge_report(self, target, new):
         """Merges a new report into the target report"""
         query_millis = int(new['parsed']['stats']['millis'])
-        target['details']['totalTimeMillis'] += query_millis
-        target['details']['count'] += 1
-        target['details']['avgTimeMillis'] = target['details']['totalTimeMillis'] / target['details']['count']
+        target['stats']['totalTimeMillis'] += query_millis
+        target['stats']['count'] += 1
+        target['stats']['avgTimeMillis'] = target['stats']['totalTimeMillis'] / target['stats']['count']

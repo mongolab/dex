@@ -112,6 +112,8 @@ class Dex:
                                                                       parsed,
                                                                       db_name,
                                                                       collection_name)
+                            if 'command' in parsed and parsed['command'].lower == 'findandmodify':
+                                print pretty_json(query_report)
                         except Exception as e:
                             print traceback.print_exc()
                             return 1

@@ -303,7 +303,7 @@ class CmdQueryHandler(QueryLineHandler):
                 result['supported'] = True
                 if command.lower() == 'count':
                     result['ns'] = match.group('db') + '.'
-                    result['ns'] += parsed['count']
+                    result['ns'] += parsed[command]
                     query = self.standardize_query(parsed['query'])
                     result['query'] = query
                     toMask = query
@@ -312,17 +312,16 @@ class CmdQueryHandler(QueryLineHandler):
                         result['orderby'] = parsed['sort']
                         toMask['$orderby'] = parsed['sort']
                     result['ns'] = match.group('db') + '.'
-                    result['ns'] += parsed['findAndModify']
+                    result['ns'] += parsed[command]
                     query = self.standardize_query(parsed['query'])
                     result['query'] = query
                     if 'sort' in parsed:
                         result['orderby'] = parsed['sort']
                         toMask['$orderby'] = parsed['sort']
                     toMask['$query'] = query
-
                 elif command.lower() == 'geonear':
                     result['ns'] = match.group('db') + '.'
-                    result['ns'] += parsed['geoNear']
+                    result['ns'] += parsed[command]
                     query = self.standardize_query(parsed['search'])
                     result['query'] = query
                     toMask = query
@@ -330,7 +329,8 @@ class CmdQueryHandler(QueryLineHandler):
                     result['supported'] = False
                     result['ns'] = match.group('db') + '.$cmd'
 
-                toMask['$cmd'] = parsed.keys()[0]
+                result['command'] = command
+                toMask['$cmd'] = command
                 result['queryMask'] = small_json(toMask)
 
                 return result

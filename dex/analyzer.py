@@ -105,7 +105,6 @@ class QueryAnalyzer:
             else:
                 internal_map_entry = {'indexes': indexes}
                 self.get_cache()[db_name][collection_name] = internal_map_entry
-        print "CACHE CHECK", self.get_cache()[db_name][collection_name]
         return self.get_cache()[db_name][collection_name]
 
     ############################################################################
@@ -180,6 +179,7 @@ class QueryAnalyzer:
         needs_recommendation = True
         full_indexes = []
         partial_indexes = []
+        coverage = "unknown"
 
         if indexes is not None:
             for index_key in indexes.keys():
@@ -193,11 +193,16 @@ class QueryAnalyzer:
                             needs_recommendation = False
                     elif index_report['coverage'] == 'partial':
                         partial_indexes.append(index_report)
-        else:
-            index_report = {'coverage': 'unknown'}
+
+        if len(full_indexes) > 0:
+            coverage = "full"
+        elif (len(partial_indexes)) > 0:
+            coverage = "partial"
+        elif query_analysis['supported']:
+            coverage = "none"
 
         # INDEX ANALYSIS
-        return OrderedDict([('indexStatus', index_report['coverage']),
+        return OrderedDict([('indexStatus', coverage),
                             ('fullIndexes', full_indexes),
                             ('partialIndexes', partial_indexes)])
 

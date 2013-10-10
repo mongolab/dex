@@ -305,7 +305,7 @@ class CmdQueryHandler(QueryLineHandler):
                     result['ns'] = match.group('db') + '.'
                     result['ns'] += parsed[command]
                     query = self.standardize_query(parsed['query'])
-                    result['query'] = query
+                    result['query'] = query['$query']
                     toMask = query
                 elif command.lower() == 'findandmodify':
                     if 'sort' in parsed:
@@ -314,7 +314,7 @@ class CmdQueryHandler(QueryLineHandler):
                     result['ns'] = match.group('db') + '.'
                     result['ns'] += parsed[command]
                     query = self.standardize_query(parsed['query'])
-                    result['query'] = query
+                    result['query'] = query['$query']
                     if 'sort' in parsed:
                         result['orderby'] = parsed['sort']
                         toMask['$orderby'] = parsed['sort']

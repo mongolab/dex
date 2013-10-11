@@ -41,6 +41,7 @@ class QueryAnalyzer:
     def __init__(self, check_indexes):
         self._internal_map = {}
         self._check_indexes = check_indexes
+        self._index_cache_connection = None
 
     ############################################################################
     def generate_query_report(self, db_uri, parsed_query, db_name, collection_name):
@@ -53,6 +54,7 @@ class QueryAnalyzer:
         index_cache_entry = self._ensure_index_cache(db_uri,
                                                      db_name,
                                                      collection_name)
+
 
         query_analysis = self._generate_query_analysis(parsed_query,
                                                        db_name,
@@ -95,10 +97,12 @@ class QueryAnalyzer:
         if collection_name not in self._internal_map[db_name]:
             indexes = []
             try:
-                connection = pymongo.MongoClient(db_uri,
-                                                 document_class=OrderedDict,
-                                                 read_preference=pymongo.ReadPreference.PRIMARY_PREFERRED)
-                db = connection[db_name]
+                if self._index_cache_connection is None:
+                    self._index_cache_connection = pymongo.MongoClient(db_uri,
+                                                                       document_class=OrderedDict,
+                                                                       read_preference=pymongo.ReadPreference.PRIMARY_PREFERRED)
+
+                db = self._index_cache_connection[db_name]
                 indexes = db[collection_name].index_information()
             except:
                 warning = 'Warning: unable to connect to ' + db_uri + "\n"

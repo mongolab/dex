@@ -186,12 +186,7 @@ class TimeLineHandler:
 class QueryLineHandler:
     ########################################################################
     def parse_query(self, extracted_query):
-        yaml_query = yamlfy(extracted_query)
-
-        if '$query' not in yaml_query:
-            return OrderedDict([('$query', yaml_query)])
-        else:
-            return yaml_query
+        return yamlfy(extracted_query)
 
     def parse_line_stats(self, stat_string):
         line_stats = {}
@@ -289,7 +284,7 @@ class CmdQueryHandler(QueryLineHandler):
     def handle(self, input):
         match = self._rx.match(input)
         if match is not None:
-            parsed = yamlfy(match.group('query'))
+            parsed = self.parse_query(match.group('query'))
             if parsed is not None:
                 result = OrderedDict()
                 result['stats'] = self.parse_line_stats(match.group('stats'))

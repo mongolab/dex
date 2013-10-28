@@ -28,7 +28,7 @@ def _custom_json_hook(obj):
 
 def validate_yaml(string):
     try:
-        yaml.load(string, OrderedDictYAMLLoader)
+        yamlfy(string)
     except:
         return False
     else:

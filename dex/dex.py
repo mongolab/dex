@@ -151,7 +151,7 @@ class Dex:
                 if ignore_db in databases:
                     databases.remove(ignore_db)
 
-        for dataase in databases:
+        for database in databases:
 
             db = connection[database]
 
@@ -389,7 +389,7 @@ class Dex:
                         sys.stderr.write(warning)
         return output_namespaces
 
-    ############################################################################                             
+    ############################################################################
     def _namespace_requested(self, namespace):
         """Checks whether the requested_namespaces contain the provided
             namespace"""

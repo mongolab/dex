@@ -7,6 +7,8 @@ The output of Dex
     "linesAnalyzed": <int>,
     "linesWithRecommendations": <int>,
     "dexTime": <datetime>,
+    ["timedOut": <boolean>,]
+    ["timeoutInMinutes": <int>,] (present if timedOut)
     "logSource": <string>,
     "timeRange": {
         "start": <datetime>,

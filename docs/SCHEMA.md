@@ -33,7 +33,7 @@ A report on a query uniquely identified by queryMask.
     "queryMask": <queryOccurrence.queryMask>,
     "recommendation": <queryOccurrence.recommendation>,
     "namespace": <queryReport.namespace>,
-    "lastSeenDate": <date>,
+    "lastSeenDate": <datetime>,
     "stats": {
        "count": <int>,
        "totalTimeMillis": <int>,

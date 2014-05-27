@@ -27,7 +27,7 @@ import sys
 import time
 from utils import pretty_json
 from analyzer import QueryAnalyzer, ReportAggregation
-from parsers import LogParser, ProfileParser
+from parsers import LogParser, ProfileParser, get_line_time
 from datetime import datetime
 from datetime import timedelta
 import traceback
@@ -85,7 +85,7 @@ class Dex:
     def _process_query(self, input, parser):
         self._run_stats['linesRead'] += 1
 
-        line_time = parser.get_line_time(input)
+        line_time = get_line_time(input)
 
         if line_time is not None:
             if ((self._run_stats['timeRange']['start'] is None) or
@@ -273,9 +273,9 @@ class Dex:
             for line in self._tail_file(open(logfile_path),
                                         WATCH_INTERVAL_SECONDS):
                 if firstLine:
-                    self._run_stats['timeRange']['start'] = log_parser.get_line_time(line)
+                    self._run_stats['timeRange']['start'] = get_line_time(line)
                 self._process_query(line, log_parser)
-                self._run_stats['timeRange']['end'] = log_parser.get_line_time(line)
+                self._run_stats['timeRange']['end'] = get_line_time(line)
                 if time.time() >= output_time:
                     self._output_aggregated_report(sys.stderr)
                     output_time = time.time() + WATCH_DISPLAY_REFRESH_SECONDS

@@ -45,6 +45,17 @@ def scrub_list(a):
     return sorted(v)
 
 
+ts_rx = re.compile('^(?P<ts>[a-zA-Z]{3} [a-zA-Z]{3} {1,2}\d+ \d{2}:\d{2}:\d{2}).*')
+def get_line_time(line):
+    ts = None
+    match = ts_rx.match(line)
+    if match:
+        year = datetime.utcnow().year
+        timestamp = mktime(strptime(match.group('ts') + ' ' + str(year), '%a %b %d %H:%M:%S %Y'))
+        ts = datetime.fromtimestamp(timestamp)
+    return ts
+
+
 ################################################################################
 # Parser
 #   Provides a parse function that passes input to a round of handlers.
@@ -64,9 +75,6 @@ class Parser(object):
             finally:
                 if query is not None:
                     return query
-        return None
-
-    def get_line_time(self, input):
         return None
 
 
@@ -143,40 +151,6 @@ class LogParser(Parser):
                                          UpdateQueryHandler(),
                                          StandardQueryHandler(),
                                          TimeLineHandler()])
-        self._ts_rx = re.compile('^(?P<ts>[a-zA-Z]{3} [a-zA-Z]{3} {1,2}\d+ \d{2}:\d{2}:\d{2}).*')
-
-    def get_line_time(self, line):
-        ts = None
-        match = self._ts_rx.match(line)
-        if match:                        #Tue Jul 30 12:56:41'
-
-            year = datetime.utcnow().year
-            timestamp = mktime(strptime(match.group('ts') + ' ' + str(year), '%a %b %d %H:%M:%S %Y'))
-            ts = datetime.fromtimestamp(timestamp)
-        return ts
-
-
-############################################################################
-# Empty TimeLineHandler class
-#   Last Resort for unparsed lines
-############################################################################
-class TimeLineHandler:
-    ########################################################################
-    def __init__(self):
-        self.name = 'Standard Query Log Line Handler'
-        self._regex = '.*(?P<query_time>\d+)ms'
-        self._rx = re.compile(self._regex)
-
-    ########################################################################
-    def handle(self, input):
-        match = self._rx.match(input)
-        if match is not None:
-            return {'ns': "?",
-                    'stats': {"millis": match.group('query_time')},
-                    'supported': False,
-                    'queryMask': None
-            }
-        return None
 
 
 ############################################################################
@@ -188,12 +162,22 @@ class QueryLineHandler:
     def parse_query(self, extracted_query):
         return yamlfy(extracted_query)
 
+    def handle(self, line):
+
+        result = self.do_handle(line)
+        if result is not None:
+            result['ts'] = get_line_time(line)
+            return result
+
+    def do_handle(self, line):
+        return None
+
     def parse_line_stats(self, stat_string):
         line_stats = {}
         split = stat_string.split(" ")
 
         for stat in split:
-            if stat is not "" and stat is not None and stat is not "locks(micros)":
+            if stat is not "" and stat is not None and stat != "locks(micros)":
                 stat_split = stat.split(":")
                 if (stat_split is not None) and (stat_split is not "") and (len(stat_split) is 2):
                     try:
@@ -247,7 +231,7 @@ class StandardQueryHandler(QueryLineHandler):
         self._rx = re.compile(self._regex)
 
     ########################################################################
-    def handle(self, input):
+    def do_handle(self, input):
         match = self._rx.match(input)
         if match is not None:
             parsed = self.parse_query(match.group('query'))
@@ -281,7 +265,7 @@ class CmdQueryHandler(QueryLineHandler):
         self._rx = re.compile(self._regex)
 
     ########################################################################
-    def handle(self, input):
+    def do_handle(self, input):
         match = self._rx.match(input)
         if match is not None:
             parsed = self.parse_query(match.group('query'))
@@ -347,7 +331,7 @@ class UpdateQueryHandler(QueryLineHandler):
         self._rx = re.compile(self._regex)
 
     ########################################################################
-    def handle(self, input):
+    def do_handle(self, input):
 
         match = self._rx.match(input)
         if match is not None:
@@ -364,6 +348,28 @@ class UpdateQueryHandler(QueryLineHandler):
                 result['stats']['millis'] = match.group('query_time')
                 result['supported'] = True
                 return result
+        return None
+
+############################################################################
+# Empty TimeLineHandler class
+#   Last Resort for unparsed lines
+############################################################################
+class TimeLineHandler(QueryLineHandler):
+    ########################################################################
+    def __init__(self):
+        self.name = 'Standard Query Log Line Handler'
+        self._regex = '.*(?P<query_time>\d+)ms'
+        self._rx = re.compile(self._regex)
+
+    ########################################################################
+    def do_handle(self, input):
+        match = self._rx.match(input)
+        if match is not None:
+            return {'ns': "?",
+                    'stats': {"millis": match.group('query_time')},
+                    'supported': False,
+                    'queryMask': None
+            }
         return None
 
 

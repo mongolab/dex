@@ -335,8 +335,12 @@ class ReportAggregation:
         if existing_report is not None:
             self._merge_report(existing_report, report)
         else:
+            time = None
+            if 'ts' in report['parsed']:
+                time = report['parsed']['ts']
             self._reports.append(OrderedDict([
                 ('namespace', report['namespace']),
+                ('lastSeenDate', time),
                 ('queryMask', mask),
                 ('supported', report['queryAnalysis']['supported']),
                 ('indexStatus', report['indexStatus']),
@@ -364,6 +368,15 @@ class ReportAggregation:
     ############################################################################
     def _merge_report(self, target, new):
         """Merges a new report into the target report"""
+        time = None
+        if 'ts' in new['parsed']:
+            time = new['parsed']['ts']
+
+        if (target.get('lastSeenDate', None) and
+                time and
+                    target['lastSeenDate'] < time):
+            target['lastSeenDate'] = time
+
         query_millis = int(new['parsed']['stats']['millis'])
         target['stats']['totalTimeMillis'] += query_millis
         target['stats']['count'] += 1

@@ -1,6 +1,8 @@
 Dex, the Index Bot
 --------
 
+DEPRECATED - This tool is recommended for MongoDB version <= 2.6
+
 Dex is a MongoDB performance tuning tool that compares  queries to the
 available indexes in the queried collection(s) and generates index suggestions
 based on simple heuristics. Currently you must provide a connection URI for
